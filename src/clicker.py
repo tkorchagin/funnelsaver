@@ -131,6 +131,31 @@ class Clicker:
                     if value:
                         await input_el.fill(value)
                         filled_count += 1
+                        await page.wait_for_timeout(500)  # Wait for autocomplete dropdown to appear
+
+                        # Check if autocomplete dropdown appeared and click first suggestion
+                        try:
+                            # Common autocomplete selectors
+                            autocomplete_selectors = [
+                                '[class*="autocomplete"]',
+                                '[class*="suggestion"]',
+                                '[class*="dropdown"]',
+                                '[role="option"]',
+                                '[role="listbox"] > div',
+                                'div[class*="cadb210c-0"]',  # Specific for this site
+                            ]
+
+                            for ac_selector in autocomplete_selectors:
+                                suggestions = await page.query_selector_all(ac_selector)
+                                if suggestions and len(suggestions) > 0:
+                                    first_suggestion = suggestions[0]
+                                    if await first_suggestion.is_visible():
+                                        await first_suggestion.click(timeout=2000)
+                                        await page.wait_for_timeout(300)
+                                        break
+                        except Exception:
+                            pass  # No autocomplete, continue
+
                         await page.wait_for_timeout(300)  # Small delay between fills
             except Exception:
                 continue
