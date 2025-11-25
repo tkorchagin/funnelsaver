@@ -151,12 +151,12 @@ class Clicker:
                                     first_suggestion = suggestions[0]
                                     if await first_suggestion.is_visible():
                                         await first_suggestion.click(timeout=2000)
-                                        await page.wait_for_timeout(300)
+                                        await page.wait_for_timeout(1000)  # Wait for button to enable
                                         break
                         except Exception:
                             pass  # No autocomplete, continue
 
-                        await page.wait_for_timeout(300)  # Small delay between fills
+                        await page.wait_for_timeout(500)  # Longer delay after autocomplete interaction
             except Exception:
                 continue
 
