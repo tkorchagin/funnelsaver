@@ -155,7 +155,7 @@ class Clicker:
 
                 # Select based on field type
                 if "month" in combined:
-                    # Pick a random month (May = 5th option, index 5 including hidden default)
+                    # Pick a random month
                     await select_el.select_option(index=random.randint(1, min(12, len(options) - 1)))
                     filled_count += 1
                 elif "day" in combined:
@@ -167,9 +167,22 @@ class Clicker:
                     middle_idx = len(options) // 2
                     await select_el.select_option(index=random.randint(max(1, middle_idx - 5), min(len(options) - 1, middle_idx + 5)))
                     filled_count += 1
+                elif "hour" in combined:
+                    # Pick a random hour (avoiding edges - 3 to 9)
+                    max_hour_idx = min(9, len(options) - 1)
+                    await select_el.select_option(index=random.randint(3, max_hour_idx))
+                    filled_count += 1
+                elif "minute" in combined:
+                    # Pick a random minute (any value)
+                    await select_el.select_option(index=random.randint(0, len(options) - 1))
+                    filled_count += 1
+                elif "part" in combined or "ampm" in combined or "meridiem" in combined:
+                    # Pick AM or PM randomly
+                    await select_el.select_option(index=random.randint(0, min(1, len(options) - 1)))
+                    filled_count += 1
                 else:
                     # For unknown selects, pick a random non-default option
-                    await select_el.select_option(index=random.randint(1, len(options) - 1))
+                    await select_el.select_option(index=random.randint(0, len(options) - 1))
                     filled_count += 1
 
                 await page.wait_for_timeout(300)  # Small delay between fills
