@@ -57,6 +57,7 @@ class Clicker:
         "email": "test@example.com",
         "phone": "+1234567890",
         "message": "Test message",
+        "location": "San Francisco",
         "text": "Test input"
     }
 
@@ -118,6 +119,8 @@ class Clicker:
                         value = self.DEFAULT_FORM_VALUES["email"]
                     elif input_type == "tel" or "phone" in combined_text or "tel" in combined_text:
                         value = self.DEFAULT_FORM_VALUES["phone"]
+                    elif "location" in combined_text or "place" in combined_text or "city" in combined_text or "where" in combined_text:
+                        value = self.DEFAULT_FORM_VALUES["location"]
                     elif "name" in combined_text:
                         value = self.DEFAULT_FORM_VALUES["name"]
                     elif "message" in combined_text or "comment" in combined_text:
