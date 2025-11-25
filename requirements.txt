@@ -1,0 +1,4 @@
+playwright>=1.40.0
+pyyaml>=6.0
+markdownify>=0.11.0
+pillow>=10.0.0
