@@ -131,7 +131,7 @@ class Clicker:
                     if value:
                         await input_el.fill(value)
                         filled_count += 1
-                        await page.wait_for_timeout(500)  # Wait for autocomplete dropdown to appear
+                        await page.wait_for_timeout(2000)  # Wait for autocomplete dropdown to appear
 
                         # Check if autocomplete dropdown appeared and click first suggestion
                         try:
