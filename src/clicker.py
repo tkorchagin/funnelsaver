@@ -51,15 +51,35 @@ class Clicker:
     # Priority keywords for buttons (highest priority)
     PRIORITY_KEYWORDS = ["next", "continue", "далее", "продолжить", "submit", "send"]
 
-    # Default form values
+    # Default form values (fallback if not in config)
     DEFAULT_FORM_VALUES = {
         "name": "Alex Johnson",
         "email": "alexjohnson.test@gmail.com",
         "phone": "+1234567890",
         "message": "Test message",
         "location": "San Francisco",
-        "text": "Test input"
+        "text": "Test input",
+        "height": "170",  # cm
+        "weight": "70",   # kg
+        "age": "30",
+        "birth_year": "1994",
+        "birth_month": "6",
+        "birth_day": "15",
+        "birth_hour": "9",
+        "birth_minute": "12",
+        "birth_ampm": "AM",
+        "steps": "5000"
     }
+
+    def __init__(self, config=None):
+        """Initialize Clicker with optional config.
+        If config is provided, use its default_form_values merged with defaults.
+        """
+        self.form_values = self.DEFAULT_FORM_VALUES.copy()
+        if config and hasattr(config, 'default_form_values'):
+            # Merge config values with defaults (config takes precedence)
+            self.form_values.update(config.default_form_values)
+        print(f"DEBUG: Using form values: {self.form_values}")
 
     async def accept_cookies(self, page: Page) -> bool:
         """Detect and click a cookie acceptance button if present.
@@ -90,19 +110,27 @@ class Clicker:
             'input[type="number"]',
             'input:not([type])',  # inputs without type
             'textarea',
+            'textarea',
             '[data-testid*="input"]',
+            '[data-testid="email-input"]',  # Explicit selector for Nebula email
         ]
+
+        print(f"DEBUG: Found {len(input_selectors)} selector types")
 
         for selector in input_selectors:
             try:
                 inputs = await page.query_selector_all(selector)
+                print(f"DEBUG: Selector '{selector}' found {len(inputs)} elements")
                 for input_el in inputs:
                     # Skip if hidden or already filled
-                    if not await input_el.is_visible():
+                    is_visible = await input_el.is_visible()
+                    if not is_visible:
+                        print(f"DEBUG: Element skipped (not visible)")
                         continue
 
                     current_value = await input_el.input_value()
                     if current_value:  # Already has value
+                        print(f"DEBUG: Element skipped (already has value: '{current_value}')")
                         continue
 
                     # Determine what to fill based on attributes
@@ -114,29 +142,58 @@ class Clicker:
                     # Determine appropriate value
                     value = None
                     combined_text = (placeholder + " " + name_attr + " " + testid).lower()
-                    is_email_field = input_type == "email" or "email" in combined_text or "e-mail" in combined_text
+                    is_email_field = input_type == "email" or "email" in combined_text or "e-mail" in combined_text or "mail" in combined_text
+                    
+                    print(f"DEBUG: Processing input: type={input_type}, placeholder='{placeholder}', name='{name_attr}', testid='{testid}', is_email={is_email_field}")
 
                     if is_email_field:
-                        value = self.DEFAULT_FORM_VALUES["email"]
+                        value = self.form_values["email"]
                     elif input_type == "tel" or "phone" in combined_text or "tel" in combined_text:
-                        value = self.DEFAULT_FORM_VALUES["phone"]
+                        value = self.form_values["phone"]
+                    elif "height" in combined_text or "рост" in combined_text:
+                        value = self.form_values["height"]
+                    elif "weight" in combined_text or "вес" in combined_text:
+                        value = self.form_values["weight"]
+                    elif "age" in combined_text or "возраст" in combined_text:
+                        value = self.form_values["age"]
                     elif "location" in combined_text or "place" in combined_text or "city" in combined_text or "where" in combined_text:
-                        value = self.DEFAULT_FORM_VALUES["location"]
+                        value = self.form_values["location"]
                     elif "name" in combined_text:
-                        value = self.DEFAULT_FORM_VALUES["name"]
+                        value = self.form_values["name"]
                     elif "message" in combined_text or "comment" in combined_text:
-                        value = self.DEFAULT_FORM_VALUES["message"]
+                        value = self.form_values["message"]
+                    elif input_type == "number":
+                        # Generic number input - use age as default
+                        value = self.form_values["age"]
                     else:
-                        value = self.DEFAULT_FORM_VALUES["text"]
+                        value = self.form_values["text"]
 
                     if value:
-                        # Use slow typing for email fields to avoid anti-fraud detection
+                        # Use fill() immediately to avoid triggering validation for every character (which causes 429s)
                         if is_email_field:
-                            await input_el.click()  # Focus on the field first
-                            await page.wait_for_timeout(500)
-                            await input_el.press_sequentially(value, delay=100)  # Type with 100ms delay between chars
-                            await page.wait_for_timeout(5000)  # 5 seconds for email validation
+                            print(f"DEBUG: Attempting to fill email field with '{value}' using fill()")
+                            try:
+                                await input_el.fill(value)
+                                await page.wait_for_timeout(500)
+                                # Dispatch events to ensure React/frameworks pick it up
+                                await input_el.dispatch_event("input")
+                                await input_el.dispatch_event("change")
+                            except Exception as e:
+                                print(f"DEBUG: fill() failed: {e}")
+                                print(f"DEBUG: Trying fallback to press_sequentially()")
+                                try:
+                                    await input_el.click()
+                                    await input_el.press_sequentially(value, delay=10) # Faster typing
+                                except Exception as e2:
+                                    print(f"DEBUG: press_sequentially failed: {e2}")
+
+                            # Verify if filled
+                            new_val = await input_el.input_value()
+                            print(f"DEBUG: Value after filling attempts: '{new_val}'")
+                            
+                            await page.wait_for_timeout(2000)  # Wait for validation
                         else:
+                            print(f"DEBUG: Filling field with '{value}' using fill()")
                             await input_el.fill(value)
                             await page.wait_for_timeout(2000)  # 2 seconds for autocomplete dropdown
                         filled_count += 1
@@ -224,6 +281,37 @@ class Clicker:
                 await page.wait_for_timeout(300)  # Small delay between fills
         except Exception:
             pass
+
+        # Check all visible checkboxes that are not already checked
+        try:
+            checkboxes = await page.query_selector_all('input[type="checkbox"]')
+            print(f"DEBUG: Found {len(checkboxes)} checkboxes")
+            for checkbox in checkboxes:
+                try:
+                    # Skip if not visible
+                    if not await checkbox.is_visible():
+                        continue
+                    
+                    # Skip cookie consent and other system checkboxes
+                    checkbox_id = await checkbox.get_attribute("id") or ""
+                    checkbox_class = await checkbox.get_attribute("class") or ""
+                    if "onetrust" in checkbox_id.lower() or "cookie" in checkbox_id.lower():
+                        continue
+                    if "onetrust" in checkbox_class.lower() or "cookie" in checkbox_class.lower():
+                        continue
+                    
+                    # Check if already checked
+                    is_checked = await checkbox.is_checked()
+                    if not is_checked:
+                        print(f"DEBUG: Checking checkbox: id='{checkbox_id}', class='{checkbox_class}'")
+                        await checkbox.check()
+                        filled_count += 1
+                        await page.wait_for_timeout(300)
+                except Exception as e:
+                    print(f"DEBUG: Error checking checkbox: {e}")
+                    continue
+        except Exception as e:
+            print(f"DEBUG: Error processing checkboxes: {e}")
 
         return filled_count
 

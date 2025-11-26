@@ -33,3 +33,7 @@ class Config:
     @property
     def default_form_values(self):
         return self.data.get('default_form_values', {})
+
+    @property
+    def screenshot_delay_ms(self):
+        return int(self.data.get('screenshot_delay_ms', 1500))

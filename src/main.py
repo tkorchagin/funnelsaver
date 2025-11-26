@@ -35,7 +35,7 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         page.on("request", log_request)
         page.on("response", log_response)
         page.on("requestfailed", log_request_failed)
-        clicker = Clicker()
+        clicker = Clicker(config)
         reporter = Reporter(url)
         scraper = Scraper(output_dir=reporter.run_dir)
 
@@ -67,6 +67,16 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
 
             # Accept cookies if any
             await clicker.accept_cookies(page)
+            
+            # Wait for animations to complete before screenshot (configurable delay)
+            await page.wait_for_timeout(config.screenshot_delay_ms)
+            
+            # Capture screenshot, HTML and extract markdown BEFORE clicking
+            # This gives time for images and animations to load
+            screenshot_path = await scraper.capture_screenshot(page, step)
+            html_path = await scraper.save_html(page, step)
+            markdown_content = await scraper.extract_markdown(page)
+            
             # Perform click (or interactive prompt could be added later)
             action_desc = await clicker.click_random(page, initial_domain, visited_urls)
 
@@ -99,10 +109,6 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                         action_desc = f"waited {i+1}s, then {new_action}"
                         break
 
-            # Capture screenshot, HTML and extract markdown
-            screenshot_path = await scraper.capture_screenshot(page, step)
-            html_path = await scraper.save_html(page, step)
-            markdown_content = await scraper.extract_markdown(page)
             # Record step
             reporter.record_step(step, page.url, screenshot_path, markdown_content, action_desc)
             visited_urls.add(page.url)
