@@ -61,6 +61,7 @@ class Clicker:
         "text": "Test input",
         "height": "170",  # cm
         "weight": "70",   # kg
+        "goal_weight": "65",  # kg
         "age": "30",
         "birth_year": "1994",
         "birth_month": "6",
@@ -152,6 +153,9 @@ class Clicker:
                         value = self.form_values["phone"]
                     elif "height" in combined_text or "рост" in combined_text:
                         value = self.form_values["height"]
+                    elif "goal" in combined_text and "weight" in combined_text:
+                        # Goal weight should be checked before regular weight
+                        value = self.form_values.get("goal_weight", self.form_values["weight"])
                     elif "weight" in combined_text or "вес" in combined_text:
                         value = self.form_values["weight"]
                     elif "age" in combined_text or "возраст" in combined_text:
