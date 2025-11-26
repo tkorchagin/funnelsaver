@@ -54,7 +54,7 @@ class Clicker:
     # Default form values
     DEFAULT_FORM_VALUES = {
         "name": "Alex Johnson",
-        "email": "test@example.com",
+        "email": "alexjohnson.test@gmail.com",
         "phone": "+1234567890",
         "message": "Test message",
         "location": "San Francisco",
@@ -114,8 +114,9 @@ class Clicker:
                     # Determine appropriate value
                     value = None
                     combined_text = (placeholder + " " + name_attr + " " + testid).lower()
+                    is_email_field = input_type == "email" or "email" in combined_text or "e-mail" in combined_text
 
-                    if input_type == "email" or "email" in combined_text or "e-mail" in combined_text:
+                    if is_email_field:
                         value = self.DEFAULT_FORM_VALUES["email"]
                     elif input_type == "tel" or "phone" in combined_text or "tel" in combined_text:
                         value = self.DEFAULT_FORM_VALUES["phone"]
@@ -129,9 +130,16 @@ class Clicker:
                         value = self.DEFAULT_FORM_VALUES["text"]
 
                     if value:
-                        await input_el.fill(value)
+                        # Use slow typing for email fields to avoid anti-fraud detection
+                        if is_email_field:
+                            await input_el.click()  # Focus on the field first
+                            await page.wait_for_timeout(500)
+                            await input_el.press_sequentially(value, delay=100)  # Type with 100ms delay between chars
+                            await page.wait_for_timeout(5000)  # 5 seconds for email validation
+                        else:
+                            await input_el.fill(value)
+                            await page.wait_for_timeout(2000)  # 2 seconds for autocomplete dropdown
                         filled_count += 1
-                        await page.wait_for_timeout(2000)  # Wait for autocomplete dropdown to appear
 
                         # Check if autocomplete dropdown appeared and click first suggestion
                         try:
