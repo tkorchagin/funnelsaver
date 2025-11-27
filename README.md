@@ -12,20 +12,22 @@ docker-compose up --build
 ```
 
 2. Access the application:
-   - **Frontend**: http://localhost:3000
-   - **Backend API**: http://localhost:5000
+   - **Frontend**: http://localhost:3002
+   - **Backend API**: http://localhost:5001
 
 3. Create account, login, and submit funnel URL
+4. Watch screenshots appear in real-time as the scraper progresses
 
 ## Architecture
 
-FunnelSaver consists of three main components:
+FunnelSaver consists of four main components:
 
 ```
 funnelsaver/
 ├── backend/          # Flask REST API + Celery workers
 ├── frontend/         # React web application
 ├── scraper/          # Playwright browser automation
+├── data/             # Persistent data (database + uploads)
 └── docker-compose.yml
 ```
 
@@ -33,12 +35,14 @@ funnelsaver/
 - REST API with JWT authentication
 - SQLite database for users, projects, screenshots
 - Celery task queue with max 2 parallel workers
-- File storage and management
+- Server-Sent Events (SSE) for real-time updates
+- Static file serving for screenshots
 
 ### Frontend (React)
 - Minimal, clean interface
 - Login/register pages
 - Project submission and listing
+- Real-time screenshot updates via SSE
 - Detailed view with screenshots and files
 
 ### Scraper (Playwright)
@@ -46,16 +50,18 @@ funnelsaver/
 - Screenshot capture at each step
 - HTML and markdown extraction
 - Smart form filling and button detection
+- Direct output to persistent storage
 
 ## Features
 
-- User authentication (JWT)
-- Queue-based scraping (max 2 parallel jobs)
-- Real-time progress tracking
-- Screenshot capture at each funnel step
-- HTML and markdown extraction
-- Downloadable reports (JSON, Markdown)
-- Responsive web interface
+- **User authentication** - JWT-based secure login
+- **Queue-based scraping** - Max 2 parallel jobs via Celery
+- **Real-time updates** - Server-Sent Events show screenshots as they're captured
+- **Screenshot capture** - Full-page screenshots at each funnel step
+- **Content extraction** - HTML and markdown extraction per step
+- **Persistent storage** - All data saved outside Docker containers
+- **Downloadable reports** - JSON and Markdown reports
+- **Responsive interface** - Clean, minimal React UI
 
 ## Development Setup
 
@@ -107,7 +113,7 @@ See [scraper/README.md](scraper/README.md) for detailed scraper documentation.
 
 **Recommended for production**
 
-1. Create environment file:
+1. Create environment file (optional):
 ```bash
 cp backend/.env.example backend/.env
 ```
@@ -121,7 +127,7 @@ REDIS_URL=redis://redis:6379/0
 
 2. Start all services:
 ```bash
-docker-compose up -d
+docker-compose up -d --build
 ```
 
 3. View logs:
@@ -134,6 +140,21 @@ docker-compose logs -f
 docker-compose down
 ```
 
+### Data Persistence
+
+Docker Compose mounts local directories for data persistence:
+- `./data/database/` → `/app/database` (SQLite DB)
+- `./data/uploads/` → `/app/uploads` (Screenshots & files)
+- `./logs/` → `/app/logs` (Application logs)
+
+Data persists across container restarts and rebuilds.
+
+### Ports
+
+- **Frontend**: 3002 → 3000 (container)
+- **Backend**: 5001 → 5000 (container)
+- **Redis**: 6379 → 6379 (container)
+
 ## API Documentation
 
 ### Authentication
@@ -144,10 +165,23 @@ docker-compose down
 - `GET /api/projects` - List user's projects
 - `POST /api/projects` - Submit new scraping job
 - `GET /api/projects/:id` - Get project details with screenshots
+- `GET /api/projects/:id/events` - SSE stream for real-time updates
 
 ### Files
-- `GET /api/screenshots/:id/image` - Get screenshot image
-- `GET /api/files/:id` - Download HTML/JSON/MD files
+- `GET /static/uploads/{path}` - Get screenshot images (no auth required)
+- `GET /api/files/:id` - Download HTML/JSON/MD files (auth required)
+
+### Real-Time Updates
+
+Server-Sent Events provide live progress updates:
+
+```javascript
+const eventSource = new EventSource('/api/projects/1/events?token=YOUR_JWT_TOKEN');
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // data.type: 'screenshot_added' | 'status_changed' | 'connected'
+};
+```
 
 See [backend/README.md](backend/README.md) for complete API documentation.
 
@@ -156,9 +190,9 @@ See [backend/README.md](backend/README.md) for complete API documentation.
 ```
 funnelsaver/
 ├── backend/
-│   ├── app.py              # Flask app with API endpoints
+│   ├── app.py              # Flask app with API + SSE endpoints
 │   ├── celery_config.py    # Celery configuration
-│   ├── tasks.py            # Celery tasks (scraping job)
+│   ├── tasks.py            # Celery tasks (scraping job + events)
 │   ├── database.py         # Database initialization
 │   ├── models.py           # SQLAlchemy models
 │   ├── requirements.txt    # Python dependencies
@@ -187,17 +221,26 @@ funnelsaver/
 │   ├── requirements.txt
 │   └── README.md           # Scraper documentation
 │
+├── data/                   # Persistent data (gitignored)
+│   ├── database/           # SQLite database
+│   └── uploads/            # Screenshots and files
+│
+├── logs/                   # Application logs (gitignored)
+│   ├── backend/
+│   └── celery/
+│
 ├── docker-compose.yml      # Docker orchestration
 └── README.md               # This file
 ```
 
-## Task Queue
+## Task Queue & Real-Time Updates
 
 Celery with Redis manages scraping jobs:
 - **Maximum 2 concurrent workers**
 - Automatic retry on failure
 - Queue status visible in frontend
-- Real-time progress updates
+- **Real-time progress via SSE** - Screenshots appear as they're captured
+- **Redis Pub/Sub** - Event distribution from worker to web clients
 
 ## Database Schema
 
@@ -240,14 +283,36 @@ This is an internal tool. For development:
 
 ## Production Considerations
 
-1. Change all secrets in `.env`
-2. Use PostgreSQL instead of SQLite
-3. Set up SSL/TLS with reverse proxy
-4. Configure proper CORS origins
-5. Set up monitoring and logging
-6. Implement backup strategy for database and uploads
-7. Use Gunicorn for Flask in production
-8. Consider horizontal scaling for Celery workers
+1. **Security**
+   - Change all secrets in `.env`
+   - Configure proper CORS origins
+   - Set up SSL/TLS with reverse proxy (nginx)
+   - Use secure JWT secret keys
+
+2. **Database**
+   - Use PostgreSQL instead of SQLite for better concurrency
+   - Implement backup strategy for database
+
+3. **Storage**
+   - Backup `data/uploads/` directory regularly
+   - Consider object storage (S3) for screenshots at scale
+
+4. **Performance**
+   - Use Gunicorn/uWSGI for Flask in production
+   - Consider horizontal scaling for Celery workers
+   - Set up Redis persistence for queue reliability
+
+5. **Monitoring**
+   - Set up application monitoring (Sentry, etc.)
+   - Monitor Celery queue depth
+   - Track SSE connection health
+   - Log aggregation for distributed logs
+
+6. **Nginx Configuration**
+   - Proxy `/api/` to backend (port 5001)
+   - Proxy `/static/uploads/` to backend for screenshots
+   - Proxy all other requests to frontend (port 3002)
+   - Set appropriate timeouts for SSE connections
 
 ## License
 
