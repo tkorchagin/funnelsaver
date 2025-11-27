@@ -34,6 +34,8 @@ class Clicker:
         "input[type='button']",
         "[data-testid*='button']",  # Elements with data-testid containing "button"
         "div[onclick]",  # Div elements with click handlers
+        "[class*='SelectBox']",  # Survey option boxes
+        "[id^='select-']",  # Elements with id starting with 'select-'
         "[class*='option']",
         "[class*='answer']",
         "[class*='card']",
@@ -550,7 +552,33 @@ class Clicker:
         if filled > 0:
             await page.wait_for_timeout(500)  # Wait for form validation
 
-        # Get clickable elements
+        # After filling forms/selecting options, check if Submit/Continue button is now enabled
+        # Wait up to 5 seconds for submit button to become enabled
+        submit_clicked = False
+        for attempt in range(10):  # 10 attempts * 500ms = 5 seconds
+            elements = await self._visible_clickables(page, initial_domain, visited_urls, prioritize_buttons=True)
+
+            # Check if any priority button (Submit, Continue, Next) is now enabled
+            for el in elements:
+                if await self._has_priority_keyword(el) and await self._is_button_enabled(el):
+                    try:
+                        text = await el.inner_text()
+                        desc = f"Selected options and clicked '{text.strip()}'"
+                        await el.click(timeout=10000)
+                        await page.wait_for_timeout(1000)
+                        return desc
+                    except Exception:
+                        try:
+                            await el.click(force=True, timeout=5000)
+                            await page.wait_for_timeout(1000)
+                            return desc
+                        except Exception:
+                            pass
+
+            # If no enabled submit button found yet, wait and try again
+            await page.wait_for_timeout(500)
+
+        # If no submit button was found/clicked, proceed with normal random click
         elements = await self._visible_clickables(page, initial_domain, visited_urls, prioritize_buttons=True)
         if not elements:
             if filled > 0:
