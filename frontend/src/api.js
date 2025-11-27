@@ -59,4 +59,12 @@ export const downloadFile = (id) => {
   return `${API_URL}/api/files/${id}`;
 };
 
+export const togglePublic = (projectId) => {
+  return api.post(`/projects/${projectId}/toggle-public`);
+};
+
+export const getPublicProject = (id) => {
+  return axios.get(`${API_URL}/api/public/projects/${id}`);
+};
+
 export default api;

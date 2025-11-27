@@ -22,6 +22,7 @@ class Project(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     url = db.Column(db.String(500), nullable=False)
     status = db.Column(db.String(20), default='queued')  # queued, processing, completed, failed
+    is_public = db.Column(db.Boolean, default=False)  # Public sharing
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.Text, nullable=True)

@@ -1,73 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { getProject, getScreenshotImage, togglePublic } from '../api';
+import { useParams } from 'react-router-dom';
+import { getPublicProject, getScreenshotImage } from '../api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Switch } from './ui/switch';
-import { ArrowLeft, Download, FileCode, FileText, X, ChevronLeft, ChevronRight, Globe, Copy, Check } from 'lucide-react';
+import { FileCode, FileText, Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
-function ProjectDetail({ token, onLogout }) {
+function PublicProject() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     loadProject();
-
-    // Set up Server-Sent Events for real-time updates
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    const eventSource = new EventSource(
-      `${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/api/projects/${id}/events?token=${token}`
-    );
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('SSE event received:', data);
-
-        if (data.type === 'screenshot_added') {
-          loadProject();
-        } else if (data.type === 'status_changed') {
-          setProject(prev => prev ? {...prev, status: data.data.status} : null);
-          if (data.data.status === 'completed' || data.data.status === 'failed') {
-            loadProject();
-          }
-        }
-      } catch (e) {
-        console.error('Error parsing SSE event:', e);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
-      eventSource.close();
-    };
-
-    const interval = setInterval(() => {
-      if (project?.status === 'processing' || project?.status === 'queued') {
-        loadProject();
-      }
-    }, 10000);
-
-    return () => {
-      eventSource.close();
-      clearInterval(interval);
-    };
   }, [id]);
 
   const loadProject = async () => {
     try {
-      const response = await getProject(id);
+      const response = await getPublicProject(id);
       setProject(response.data);
     } catch (err) {
-      setError('Failed to load project');
+      setError('Project not found or not public');
     } finally {
       setLoading(false);
     }
@@ -107,22 +62,6 @@ function ProjectDetail({ token, onLogout }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxIndex]);
 
-  const handleTogglePublic = async () => {
-    try {
-      const response = await togglePublic(id);
-      setProject({ ...project, is_public: response.data.is_public });
-    } catch (err) {
-      console.error('Failed to toggle public', err);
-    }
-  };
-
-  const handleCopyLink = () => {
-    const publicUrl = `${window.location.origin}/public/${id}`;
-    navigator.clipboard.writeText(publicUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const getStatusVariant = (status) => {
     switch (status) {
       case 'completed':
@@ -160,7 +99,7 @@ function ProjectDetail({ token, onLogout }) {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline break-all"
+            className="text-primary hover:underline break-all"
             onClick={(e) => e.stopPropagation()}
           >
             {part}
@@ -194,17 +133,15 @@ function ProjectDetail({ token, onLogout }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold">Project Details</h1>
+      <header className="w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 py-4 max-w-7xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold">FunnelSaver</h1>
+              <p className="text-sm text-muted-foreground">Shared funnel by {project.owner_username}</p>
+            </div>
+            <Badge variant="outline">Public</Badge>
           </div>
-          <Button variant="ghost" onClick={onLogout}>
-            Logout
-          </Button>
         </div>
       </header>
 
@@ -227,53 +164,13 @@ function ProjectDetail({ token, onLogout }) {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            {/* Public Sharing Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <label htmlFor="public-toggle" className="text-sm font-medium cursor-pointer">
-                    Share publicly
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Anyone with the link can view
-                  </p>
-                </div>
-                <Switch
-                  id="public-toggle"
-                  checked={project.is_public}
-                  onCheckedChange={handleTogglePublic}
-                />
-              </div>
-              {project.is_public && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyLink}
-                  className="sm:ml-auto"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy link
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-
-            {project.error && (
+          {project.error && (
+            <CardContent>
               <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-md">
                 <strong>Error:</strong> {project.error}
               </div>
-            )}
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
 
         {/* Screenshots Section */}
@@ -381,17 +278,6 @@ function ProjectDetail({ token, onLogout }) {
             </CardContent>
           </Card>
         )}
-
-        {/* Processing Message */}
-        {project.status === 'processing' && (
-          <Card className="mt-8 border-slate-200 bg-slate-50">
-            <CardContent className="py-4 text-center">
-              <p className="font-medium">
-                🔄 Scraping in progress... This page will update automatically.
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </main>
 
       {/* Lightbox Modal */}
@@ -454,4 +340,4 @@ function ProjectDetail({ token, onLogout }) {
   );
 }
 
-export default ProjectDetail;
+export default PublicProject;

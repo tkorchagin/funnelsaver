@@ -166,6 +166,7 @@ def get_project(project_id):
         'id': project.id,
         'url': project.url,
         'status': project.status,
+        'is_public': project.is_public,
         'created_at': project.created_at.isoformat(),
         'completed_at': project.completed_at.isoformat() if project.completed_at else None,
         'error': project.error,
@@ -278,6 +279,70 @@ def project_events(project_id):
             'Access-Control-Allow-Origin': '*'
         }
     )
+
+
+@app.route('/api/projects/<int:project_id>/toggle-public', methods=['POST'])
+@jwt_required()
+def toggle_public(project_id):
+    """Toggle public access for a project"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+
+    # Check if user owns this project or is admin
+    project = Project.query.filter_by(id=project_id).first()
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    if project.user_id != user_id and not (user and user.is_admin):
+        return jsonify({'error': 'Not authorized'}), 403
+
+    # Toggle is_public
+    project.is_public = not project.is_public
+    db.session.commit()
+
+    return jsonify({
+        'id': project.id,
+        'is_public': project.is_public
+    }), 200
+
+
+@app.route('/api/public/projects/<int:project_id>', methods=['GET'])
+def get_public_project(project_id):
+    """Get public project without authentication"""
+    project = Project.query.filter_by(id=project_id, is_public=True).first()
+
+    if not project:
+        return jsonify({'error': 'Project not found or not public'}), 404
+
+    screenshots = Screenshot.query.filter_by(project_id=project_id).order_by(Screenshot.step_number).all()
+    files = File.query.filter_by(project_id=project_id).all()
+
+    return jsonify({
+        'id': project.id,
+        'url': project.url,
+        'status': project.status,
+        'created_at': project.created_at.isoformat(),
+        'completed_at': project.completed_at.isoformat() if project.completed_at else None,
+        'error': project.error,
+        'is_public': project.is_public,
+        'owner_username': project.user.username if project.user else None,
+        'screenshots': [{
+            'id': s.id,
+            'step_number': s.step_number,
+            'url': s.url,
+            'screenshot_path': s.screenshot_path,
+            'html_path': s.html_path,
+            'markdown_path': s.markdown_path,
+            'action_description': s.action_description,
+            'markdown_content': s.markdown_content
+        } for s in screenshots],
+        'files': [{
+            'id': f.id,
+            'file_type': f.file_type,
+            'file_path': f.file_path,
+            'file_name': f.file_name
+        } for f in files]
+    }), 200
 
 
 if __name__ == '__main__':

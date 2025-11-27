@@ -100,7 +100,7 @@ function Login({ onLogin }) {
         </div>
 
         <div className="text-sm text-slate-500">
-          © 2024 FunnelSaver. All rights reserved.
+          © 2025 FunnelSaver. All rights reserved.
         </div>
       </div>
 

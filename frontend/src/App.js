@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './components/Login.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import ProjectDetail from './components/ProjectDetail.jsx';
+import PublicProject from './components/PublicProject.jsx';
 import './App.css';
 
 function App() {
@@ -39,6 +40,10 @@ function App() {
           <Route
             path="/project/:id"
             element={token ? <ProjectDetail token={token} onLogout={handleLogout} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/public/:id"
+            element={<PublicProject />}
           />
         </Routes>
       </div>
