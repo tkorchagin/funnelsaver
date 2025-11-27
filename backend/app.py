@@ -97,7 +97,8 @@ def get_projects():
         'completed_at': p.completed_at.isoformat() if p.completed_at else None,
         'error': p.error,
         'user_id': p.user_id,
-        'username': p.user.username if user and user.is_admin else None
+        'username': p.user.username if user and user.is_admin else None,
+        'screenshot_count': len(p.screenshots)
     } for p in projects]), 200
 
 
