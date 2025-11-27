@@ -1,22 +1,42 @@
 import sys
 import os
 import shutil
+import json
 from datetime import datetime
 from celery_config import celery_app
 from flask import Flask
 from database import db
 from models import Project, Screenshot, File
+import redis
 
 # Initialize Flask app for database access
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///funnelsaver.db'
+db_dir = os.path.join(os.path.dirname(__file__), 'database')
+os.makedirs(db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "funnelsaver.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads')
 db.init_app(app)
 
 # Add scraper module to path
-scraper_path = os.path.join(os.path.dirname(__file__), '..', 'scraper')
+# In Docker, scraper is mounted at /scraper
+scraper_path = '/scraper' if os.path.exists('/scraper') else os.path.join(os.path.dirname(__file__), '..', 'scraper')
 sys.path.insert(0, scraper_path)
+
+
+def send_progress_event(project_id, event_type, data):
+    """Send real-time progress event via Redis pub/sub"""
+    try:
+        r = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'))
+        channel = f'project_{project_id}_updates'
+        message = json.dumps({
+            'type': event_type,
+            'data': data,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        r.publish(channel, message)
+    except Exception as e:
+        print(f"Failed to send progress event: {e}")
 
 
 @celery_app.task(bind=True)
@@ -37,56 +57,41 @@ def scrape_funnel(self, project_id):
             project.status = 'processing'
             db.session.commit()
 
+            # Send status update event
+            send_progress_event(project_id, 'status_changed', {'status': 'processing'})
+
             # Import scraper functions
             import asyncio
             from src.main import run_funnel
 
-            # Create temp output directory
-            temp_output = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_{project_id}')
-            os.makedirs(temp_output, exist_ok=True)
-
-            # Run the scraper (this will create outputs/ subdirectory)
-            asyncio.run(run_funnel(
-                url=project.url,
-                headless=True,
-                max_steps=20
-            ))
-
-            # Find the latest output directory
-            outputs_dir = os.path.join(scraper_path, 'outputs')
-            if not os.path.exists(outputs_dir):
-                raise Exception('No outputs directory found')
-
-            # Get the latest run directory
-            run_dirs = [d for d in os.listdir(outputs_dir)
-                       if os.path.isdir(os.path.join(outputs_dir, d))]
-            if not run_dirs:
-                raise Exception('No run directories found')
-
-            latest_run = sorted(run_dirs)[-1]
-            run_dir = os.path.join(outputs_dir, latest_run)
-
-            # Create project directory in uploads
+            # Create project directory directly in uploads
             project_dir = os.path.join(app.config['UPLOAD_FOLDER'], f'project_{project_id}')
             os.makedirs(project_dir, exist_ok=True)
 
-            # Process screenshots and HTML files
+            # Run the scraper with custom output directory
+            asyncio.run(run_funnel(
+                url=project.url,
+                headless=True,
+                max_steps=20,
+                output_dir=project_dir
+            ))
+
+            # Use project_dir as run_dir (scraper will write directly there)
+            run_dir = project_dir
+
+            # Process screenshots and HTML files (already in project_dir)
             step_number = 0
             while True:
                 screenshot_file = f'step_{step_number}.png'
                 html_file = f'step_{step_number}.html'
 
-                screenshot_path = os.path.join(run_dir, screenshot_file)
-                html_path = os.path.join(run_dir, html_file)
+                screenshot_path = os.path.join(project_dir, screenshot_file)
+                html_path = os.path.join(project_dir, html_file)
 
                 if not os.path.exists(screenshot_path):
                     break
 
-                # Copy screenshot to uploads
-                dest_screenshot = os.path.join(project_dir, screenshot_file)
-                shutil.copy2(screenshot_path, dest_screenshot)
-
-                # Store screenshot in database
+                # Store screenshot in database (file already in place)
                 screenshot = Screenshot(
                     project_id=project_id,
                     step_number=step_number,
@@ -95,12 +100,17 @@ def scrape_funnel(self, project_id):
                     action_description=f'Step {step_number}'
                 )
                 db.session.add(screenshot)
+                db.session.commit()  # Commit immediately so SSE can see it
 
-                # Copy HTML if exists
+                # Send screenshot added event
+                send_progress_event(project_id, 'screenshot_added', {
+                    'step_number': step_number,
+                    'screenshot_id': screenshot.id,
+                    'screenshot_path': f'project_{project_id}/{screenshot_file}'
+                })
+
+                # Store HTML if exists (file already in place)
                 if os.path.exists(html_path):
-                    dest_html = os.path.join(project_dir, html_file)
-                    shutil.copy2(html_path, dest_html)
-
                     html_file_record = File(
                         project_id=project_id,
                         file_type='html',
@@ -111,31 +121,25 @@ def scrape_funnel(self, project_id):
 
                 step_number += 1
 
-            # Copy report files (markdown and JSON)
-            report_md = os.path.join(run_dir, 'report.md')
-            report_json = os.path.join(run_dir, 'report.json')
+            # Store report files in database (files already in place)
+            report_md_path = os.path.join(project_dir, 'funnel_report.md')
+            report_json_path = os.path.join(project_dir, 'funnel_data.json')
 
-            if os.path.exists(report_md):
-                dest_md = os.path.join(project_dir, 'report.md')
-                shutil.copy2(report_md, dest_md)
-
+            if os.path.exists(report_md_path):
                 md_file = File(
                     project_id=project_id,
                     file_type='markdown',
-                    file_path=f'project_{project_id}/report.md',
-                    file_name='report.md'
+                    file_path=f'project_{project_id}/funnel_report.md',
+                    file_name='funnel_report.md'
                 )
                 db.session.add(md_file)
 
-            if os.path.exists(report_json):
-                dest_json = os.path.join(project_dir, 'report.json')
-                shutil.copy2(report_json, dest_json)
-
+            if os.path.exists(report_json_path):
                 json_file = File(
                     project_id=project_id,
                     file_type='json',
-                    file_path=f'project_{project_id}/report.json',
-                    file_name='report.json'
+                    file_path=f'project_{project_id}/funnel_data.json',
+                    file_name='funnel_data.json'
                 )
                 db.session.add(json_file)
 
@@ -144,9 +148,11 @@ def scrape_funnel(self, project_id):
             project.completed_at = datetime.utcnow()
             db.session.commit()
 
-            # Cleanup temp directory
-            if os.path.exists(temp_output):
-                shutil.rmtree(temp_output)
+            # Send completion event
+            send_progress_event(project_id, 'status_changed', {
+                'status': 'completed',
+                'completed_at': project.completed_at.isoformat()
+            })
 
             return {'status': 'completed', 'project_id': project_id}
 
@@ -156,5 +162,11 @@ def scrape_funnel(self, project_id):
             project.error = str(e)
             project.completed_at = datetime.utcnow()
             db.session.commit()
+
+            # Send failure event
+            send_progress_event(project_id, 'status_changed', {
+                'status': 'failed',
+                'error': str(e)
+            })
 
             return {'status': 'failed', 'error': str(e)}

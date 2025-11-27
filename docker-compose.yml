@@ -15,10 +15,10 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
@@ -26,7 +26,9 @@ services:
     volumes:
       - ./backend:/app
       - ./scraper:/scraper
-      - backend_uploads:/app/uploads
+      - ./data/uploads:/app/uploads
+      - ./data/database:/app/database
+      - ./logs/backend:/app/logs
     depends_on:
       redis:
         condition: service_healthy
@@ -34,8 +36,8 @@ services:
 
   celery_worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     environment:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key}
@@ -43,7 +45,9 @@ services:
     volumes:
       - ./backend:/app
       - ./scraper:/scraper
-      - backend_uploads:/app/uploads
+      - ./data/uploads:/app/uploads
+      - ./data/database:/app/database
+      - ./logs/celery:/app/logs
     depends_on:
       redis:
         condition: service_healthy
@@ -54,9 +58,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:5000
+      - REACT_APP_API_URL=https://b.hugmediary.com
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -65,4 +69,3 @@ services:
 
 volumes:
   redis_data:
-  backend_uploads:

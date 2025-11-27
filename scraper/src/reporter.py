@@ -8,14 +8,18 @@ class Reporter:
     Creates/initializes files at start and appends after each captured step.
     """
 
-    def __init__(self, url: str, output_dir: str = "outputs"):
+    def __init__(self, url: str, output_dir: str = "outputs", use_subdirectory: bool = True):
         # Extract domain from URL
         parsed = urlparse(url)
         domain = parsed.netloc.replace('www.', '').replace('.', '_')
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # Create directory for this specific run
-        self.run_dir = os.path.join(output_dir, f"{domain}_{timestamp}")
+        if use_subdirectory:
+            self.run_dir = os.path.join(output_dir, f"{domain}_{timestamp}")
+        else:
+            # Use output_dir directly without subdirectory
+            self.run_dir = output_dir
         os.makedirs(self.run_dir, exist_ok=True)
 
         # Create README.md with URL info

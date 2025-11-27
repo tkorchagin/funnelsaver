@@ -9,7 +9,7 @@ from src.reporter import Reporter
 
 async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                       interactive: bool = False, max_steps: int = 20, debug: bool = False,
-                      pause_at_step: int = None, keep_open: bool = False):
+                      pause_at_step: int = None, keep_open: bool = False, output_dir: str = None):
     from urllib.parse import urlparse
 
     config = Config(config_path) if config_path else Config()
@@ -36,7 +36,12 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         page.on("response", log_response)
         page.on("requestfailed", log_request_failed)
         clicker = Clicker(config)
-        reporter = Reporter(url)
+        if output_dir:
+            # Use provided output_dir directly without subdirectory
+            reporter = Reporter(url, output_dir=output_dir, use_subdirectory=False)
+        else:
+            # Default: create outputs/domain_timestamp subdirectory
+            reporter = Reporter(url)
         scraper = Scraper(output_dir=reporter.run_dir)
 
         # Navigate to URL and get initial domain

@@ -18,6 +18,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 errors (unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const login = (username, password) => {
   return api.post('/auth/login', { username, password });
 };
@@ -38,8 +50,9 @@ export const getProject = (id) => {
   return api.get(`/projects/${id}`);
 };
 
-export const getScreenshotImage = (id) => {
-  return `${API_URL}/api/screenshots/${id}/image`;
+export const getScreenshotImage = (screenshotPath) => {
+  // screenshotPath is like "project_1/step_0.png"
+  return `${API_URL}/static/uploads/${screenshotPath}`;
 };
 
 export const downloadFile = (id) => {

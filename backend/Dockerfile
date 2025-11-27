@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend requirements
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -21,11 +21,11 @@ RUN pip install playwright && \
     playwright install --with-deps chromium
 
 # Copy scraper requirements and install
-COPY ../scraper/requirements.txt /scraper/requirements.txt
+COPY scraper/requirements.txt /scraper/requirements.txt
 RUN pip install --no-cache-dir -r /scraper/requirements.txt
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # Create uploads directory
 RUN mkdir -p uploads

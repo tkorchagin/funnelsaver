@@ -12,14 +12,53 @@ function ProjectDetail({ token, onLogout }) {
 
   useEffect(() => {
     loadProject();
-    // Poll for updates every 5 seconds if still processing
+
+    // Set up Server-Sent Events for real-time updates
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    // EventSource doesn't support custom headers, pass token as query param
+    const eventSource = new EventSource(
+      `${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/api/projects/${id}/events?token=${token}`
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('SSE event received:', data);
+
+        if (data.type === 'screenshot_added') {
+          // Reload project to get new screenshot
+          loadProject();
+        } else if (data.type === 'status_changed') {
+          // Update status immediately
+          setProject(prev => prev ? {...prev, status: data.data.status} : null);
+          if (data.data.status === 'completed' || data.data.status === 'failed') {
+            loadProject();
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing SSE event:', e);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE error:', error);
+      eventSource.close();
+    };
+
+    // Fallback polling every 10 seconds if SSE fails
     const interval = setInterval(() => {
       if (project?.status === 'processing' || project?.status === 'queued') {
         loadProject();
       }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id, project?.status]);
+    }, 10000);
+
+    return () => {
+      eventSource.close();
+      clearInterval(interval);
+    };
+  }, [id]);
 
   const loadProject = async () => {
     try {
@@ -129,7 +168,7 @@ function ProjectDetail({ token, onLogout }) {
                     <span className="step-number">Step {screenshot.step_number}</span>
                   </div>
                   <img
-                    src={getScreenshotImage(screenshot.id)}
+                    src={getScreenshotImage(screenshot.screenshot_path)}
                     alt={`Step ${screenshot.step_number}`}
                     className="screenshot-image"
                   />

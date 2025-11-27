@@ -15,8 +15,7 @@ class Scraper:
         """Capture a screenshot of the current page.
         Returns the file path of the saved screenshot.
         """
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"step_{step}_{timestamp}.png"
+        filename = f"step_{step}.png"
         path = os.path.join(self.output_dir, filename)
         await page.screenshot(path=path, full_page=True)
         return path
@@ -25,8 +24,7 @@ class Scraper:
         """Save the HTML content of the page for debugging.
         Returns the file path of the saved HTML.
         """
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"step_{step}_{timestamp}.html"
+        filename = f"step_{step}.html"
         path = os.path.join(self.output_dir, filename)
         html = await page.content()
         with open(path, 'w', encoding='utf-8') as f:

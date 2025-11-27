@@ -12,11 +12,15 @@ from tasks import scrape_funnel
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='/app/uploads', static_url_path='/static/uploads')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///funnelsaver.db'
+app.config['JWT_IDENTITY_CLAIM'] = 'sub'
+# Use database directory for persistent storage
+db_dir = os.path.join(os.path.dirname(__file__), 'database')
+os.makedirs(db_dir, exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "funnelsaver.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(__file__), 'uploads')
 
@@ -64,14 +68,14 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'Invalid credentials'}), 401
 
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
     return jsonify({'access_token': access_token, 'username': username}), 200
 
 
 @app.route('/api/projects', methods=['GET'])
 @jwt_required()
 def get_projects():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
 
     return jsonify([{
@@ -87,7 +91,7 @@ def get_projects():
 @app.route('/api/projects', methods=['POST'])
 @jwt_required()
 def create_project():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
     url = data.get('url')
 
@@ -116,7 +120,7 @@ def create_project():
 @app.route('/api/projects/<int:project_id>', methods=['GET'])
 @jwt_required()
 def get_project(project_id):
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     project = Project.query.filter_by(id=project_id, user_id=user_id).first()
 
     if not project:
@@ -152,7 +156,7 @@ def get_project(project_id):
 @app.route('/api/files/<int:file_id>', methods=['GET'])
 @jwt_required()
 def download_file(file_id):
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     file = File.query.join(Project).filter(
         File.id == file_id,
         Project.user_id == user_id
@@ -171,7 +175,7 @@ def download_file(file_id):
 @app.route('/api/screenshots/<int:screenshot_id>/image', methods=['GET'])
 @jwt_required()
 def get_screenshot_image(screenshot_id):
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     screenshot = Screenshot.query.join(Project).filter(
         Screenshot.id == screenshot_id,
         Project.user_id == user_id
@@ -190,6 +194,55 @@ def get_screenshot_image(screenshot_id):
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'}), 200
+
+
+@app.route('/api/projects/<int:project_id>/events')
+def project_events(project_id):
+    """Server-Sent Events endpoint for real-time project updates"""
+    # Get token from query param since EventSource doesn't support headers
+    token = request.args.get('token')
+    if not token:
+        return jsonify({'error': 'Missing token'}), 401
+
+    from flask_jwt_extended import decode_token
+    try:
+        decoded = decode_token(token)
+        user_id = int(decoded['sub'])
+    except:
+        return jsonify({'error': 'Invalid token'}), 401
+
+    project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    import redis
+    import json
+
+    def event_stream():
+        # Connect to Redis for pub/sub
+        r = redis.from_url(os.getenv('REDIS_URL', 'redis://redis:6379/0'))
+        pubsub = r.pubsub()
+        channel = f'project_{project_id}_updates'
+        pubsub.subscribe(channel)
+
+        # Send initial state
+        yield f"data: {json.dumps({'type': 'connected', 'project_id': project_id})}\n\n"
+
+        # Listen for updates
+        for message in pubsub.listen():
+            if message['type'] == 'message':
+                yield f"data: {message['data'].decode('utf-8')}\n\n"
+
+    return app.response_class(
+        event_stream(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Access-Control-Allow-Origin': '*'
+        }
+    )
 
 
 if __name__ == '__main__':

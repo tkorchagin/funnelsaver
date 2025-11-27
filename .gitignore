@@ -37,6 +37,15 @@ env/
 # Project specific
 outputs/
 *.log
+logs/
+data/
+backend/instance/
+backend/database/
+backend/uploads/
+
+# Node modules
+node_modules/
+frontend/build/
 
 # Config files with sensitive data
 .env
