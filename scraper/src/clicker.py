@@ -555,27 +555,44 @@ class Clicker:
         # After filling forms/selecting options, check if Submit/Continue button is now enabled
         # Wait up to 5 seconds for submit button to become enabled
         submit_clicked = False
+        print(f"DEBUG: Filled {filled} fields, now looking for enabled submit button...")
+
         for attempt in range(10):  # 10 attempts * 500ms = 5 seconds
             elements = await self._visible_clickables(page, initial_domain, visited_urls, prioritize_buttons=True)
 
             # Check if any priority button (Submit, Continue, Next) is now enabled
             for el in elements:
-                if await self._has_priority_keyword(el) and await self._is_button_enabled(el):
+                has_priority = await self._has_priority_keyword(el)
+                is_enabled = await self._is_button_enabled(el)
+
+                if has_priority:
+                    try:
+                        text = await el.inner_text()
+                        disabled_attr = await el.get_attribute("disabled")
+                        print(f"DEBUG: Priority button found: '{text.strip()}', disabled={disabled_attr}, enabled={is_enabled}")
+                    except:
+                        pass
+
+                if has_priority and is_enabled:
                     try:
                         text = await el.inner_text()
                         desc = f"Selected options and clicked '{text.strip()}'"
+                        print(f"DEBUG: Clicking enabled submit button: '{text.strip()}'")
                         await el.click(timeout=10000)
                         await page.wait_for_timeout(1000)
                         return desc
-                    except Exception:
+                    except Exception as e:
+                        print(f"DEBUG: Click failed: {e}, trying force click...")
                         try:
                             await el.click(force=True, timeout=5000)
                             await page.wait_for_timeout(1000)
                             return desc
-                        except Exception:
+                        except Exception as e2:
+                            print(f"DEBUG: Force click also failed: {e2}")
                             pass
 
             # If no enabled submit button found yet, wait and try again
+            print(f"DEBUG: Attempt {attempt+1}/10 - no enabled submit button found, waiting...")
             await page.wait_for_timeout(500)
 
         # If no submit button was found/clicked, proceed with normal random click

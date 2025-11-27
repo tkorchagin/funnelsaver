@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up:*)",
+      "Bash(lsof:*)",
+      "Bash(sudo systemctl stop:*)",
+      "Read(//etc/nginx/sites-enabled/**)",
+      "Read(//etc/nginx/sites-available/**)",
+      "Bash(xargs kill:*)",
+      "Bash(sudo lsof:*)",
+      "Bash(xargs:*)",
+      "Bash(ss:*)",
+      "Bash(awk:*)",
+      "Bash(grep:*)",
+      "Bash(docker-compose:*)",
+      "Bash(curl:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NDI0NDQ0MCwianRpIjoiYjhkYzVmZTYtOTAzYy00MTYzLTlkZGUtMzE4MzYzZjlmMzAxIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6MSwibmJmIjoxNzY0MjQ0NDQwLCJjc3JmIjoiMTMwMjlhMDItMjYwZC00MDU2LTljYTUtOTQxZDUwNTJmYzIyIiwiZXhwIjoxNzY0MzMwODQwfQ.-HpZQuhZVdwiBQP_pGkZO7OuBjq52N6iQyU9VcDGjqs\")",
+      "Bash(nginx:*)",
+      "Bash(systemctl reload:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2NDI0NDYyNiwianRpIjoiYmYzMmU3MGUtODNiMC00MjIzLWFkN2QtODBlNWM0ODZkMTViIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjIiLCJuYmYiOjE3NjQyNDQ2MjYsImNzcmYiOiJjMWJkNGM2Yi05NWIyLTRmM2UtOTM1OS1mMzQwMDA3NzE5ZDgiLCJleHAiOjE3NjQzMzEwMjZ9.hpUenCJL6blmt0hpuZemCk7SH4nhPMR4DcKdAwjS7hw\")",
+      "Bash(docker exec:*)",
+      "Bash(sqlite3:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npm install:*)",
+      "Bash(claude mcp add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

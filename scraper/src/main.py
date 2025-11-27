@@ -100,6 +100,12 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
             action_desc = await clicker.click_random(page, initial_domain, visited_urls)
             print(f"[Step {step}] Action: {action_desc}")
 
+            # Wait for navigation/page updates to complete
+            try:
+                await page.wait_for_load_state('domcontentloaded', timeout=3000)
+            except Exception:
+                pass  # Continue if timeout
+
             # Check for error messages on page (Network Error, validation errors, etc.)
             page_content = await page.content()
             if "Network Error" in page_content or "network error" in page_content.lower():
