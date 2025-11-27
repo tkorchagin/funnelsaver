@@ -37,12 +37,15 @@ class Reporter:
         self.steps = []
 
     def _append_markdown(self, step_num: int, url: str, screenshot_path: str, markdown_content: str, action: str):
+        # Ensure absolute path for screenshot
+        abs_screenshot_path = os.path.abspath(screenshot_path)
+        
         # Append to main report
         with open(self.md_path, "a", encoding="utf-8") as f_md:
             f_md.write(f"## Step {step_num}\n")
             f_md.write(f"**URL:** {url}\n\n")
             f_md.write(f"**Action:** {action}\n\n")
-            f_md.write(f"![Screenshot]({screenshot_path})\n\n")
+            f_md.write(f"![Screenshot]({abs_screenshot_path})\n\n")
             f_md.write(f"{markdown_content}\n\n---\n\n")
 
         # Create individual step file
@@ -51,7 +54,7 @@ class Reporter:
             f_step.write(f"# Step {step_num}\n\n")
             f_step.write(f"**URL:** {url}\n\n")
             f_step.write(f"**Action:** {action}\n\n")
-            f_step.write(f"![Screenshot]({os.path.basename(screenshot_path)})\n\n")
+            f_step.write(f"![Screenshot]({abs_screenshot_path})\n\n")
             f_step.write(f"## Page Content\n\n")
             f_step.write(f"{markdown_content}\n")
 

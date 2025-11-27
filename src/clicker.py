@@ -34,6 +34,12 @@ class Clicker:
         "input[type='button']",
         "[data-testid*='button']",  # Elements with data-testid containing "button"
         "div[onclick]",  # Div elements with click handlers
+        "[class*='option']",
+        "[class*='answer']",
+        "[class*='card']",
+        "[class*='item']",
+        "label:has(input[type='radio'])", # Labels wrapping radios
+        "label:has(input[type='checkbox'])", # Labels wrapping checkboxes
     ]
 
     LINK_SELECTORS = [
@@ -346,6 +352,7 @@ class Clicker:
                             is_gender_group = True
                             break
                 
+                selected_radio = None
                 if is_gender_group:
                     print(f"DEBUG: Processing gender radio group: {name}")
                     for radio in group:
@@ -353,60 +360,43 @@ class Clicker:
                         val_lower = val.lower()
                         
                         # Check if this radio matches our target gender
-                        # Map common terms: female/woman, male/man
-                        is_match = False
                         if target_gender in ["female", "woman"] and val_lower in ["female", "woman"]:
-                            is_match = True
+                            selected_radio = radio
+                            break
                         elif target_gender in ["male", "man"] and val_lower in ["male", "man"]:
-                            is_match = True
-                            
-                        if is_match:
-                            print(f"DEBUG: Found matching gender radio: {val}")
-                            # Try to click the radio or its label
-                            try:
-                                if await radio.is_visible():
-                                    await radio.click()
-                                    filled_count += 1
-                                    await page.wait_for_timeout(500)
-                                else:
-                                    # If radio is hidden, try clicking parent label
-                                    # Playwright's locator strategy for labels
-                                    # We can try to find a label that wraps this input
-                                    # Or execute JS to click the parent label
-                                    print("DEBUG: Radio not visible, trying to click parent label")
-                                    await radio.evaluate("el => el.closest('label') && el.closest('label').click()")
-                                    filled_count += 1
-                                    await page.wait_for_timeout(500)
-                            except Exception as e:
-                                print(f"DEBUG: Error clicking gender radio: {e}")
-                                # Fallback: try clicking parent label via JS if standard click failed
-                                try:
-                                    await radio.evaluate("el => el.closest('label') && el.closest('label').click()")
-                                except:
-                                    pass
-                            break # Stop after selecting one option in the group
+                            selected_radio = radio
+                            break
                 else:
                     # Random selection for non-gender groups
                     print(f"DEBUG: Processing random radio group: {name}")
                     if group:
-                        import random
-                        radio = random.choice(group)
+                        selected_radio = random.choice(group)
+
+                if selected_radio:
+                    try:
+                        # Try to click the radio or its label
+                        clicked = False
+                        if await selected_radio.is_visible():
+                            await selected_radio.click(timeout=1000)
+                            clicked = True
+                        else:
+                            # If radio is hidden, try clicking parent label
+                            print("DEBUG: Radio not visible, trying to click parent label")
+                            # Try JS click on label
+                            await selected_radio.evaluate("el => el.closest('label') && el.closest('label').click()")
+                            clicked = True
+                        
+                        if clicked:
+                            filled_count += 1
+                            await page.wait_for_timeout(500)
+                    except Exception as e:
+                        print(f"DEBUG: Error clicking radio: {e}")
+                        # Fallback: try clicking parent label via JS if standard click failed
                         try:
-                            if await radio.is_visible():
-                                await radio.click()
-                                filled_count += 1
-                                await page.wait_for_timeout(500)
-                            else:
-                                print("DEBUG: Radio not visible, trying to click parent label")
-                                await radio.evaluate("el => el.closest('label') && el.closest('label').click()")
-                                filled_count += 1
-                                await page.wait_for_timeout(500)
-                        except Exception as e:
-                            print(f"DEBUG: Error clicking random radio: {e}")
-                            try:
-                                await radio.evaluate("el => el.closest('label') && el.closest('label').click()")
-                            except:
-                                pass
+                            await selected_radio.evaluate("el => el.closest('label') && el.closest('label').click()")
+                            filled_count += 1
+                        except:
+                            pass
         except Exception as e:
             print(f"DEBUG: Error processing radio buttons: {e}")
 
@@ -563,6 +553,8 @@ class Clicker:
         # Get clickable elements
         elements = await self._visible_clickables(page, initial_domain, visited_urls, prioritize_buttons=True)
         if not elements:
+            if filled > 0:
+                return "Filled forms / selected options"
             return "No clickable elements found"
 
         element = random.choice(elements)
@@ -573,6 +565,9 @@ class Clicker:
             desc = f"clicked element with text '{text.strip()}'"
         except Exception:
             desc = "clicked an element"
+
+        if filled > 0:
+            desc = f"Filled forms and {desc}"
 
         try:
             await element.click(timeout=10000)
