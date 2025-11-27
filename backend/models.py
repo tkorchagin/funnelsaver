@@ -36,6 +36,8 @@ class Screenshot(db.Model):
     step_number = db.Column(db.Integer, nullable=False)
     url = db.Column(db.String(500), nullable=False)
     screenshot_path = db.Column(db.String(500), nullable=False)
+    html_path = db.Column(db.String(500), nullable=True)
+    markdown_path = db.Column(db.String(500), nullable=True)
     action_description = db.Column(db.Text, nullable=True)
     markdown_content = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
