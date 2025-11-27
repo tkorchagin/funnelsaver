@@ -181,12 +181,9 @@ function ProjectDetail({ token, onLogout }) {
             <h2>Screenshots ({project.screenshots.length})</h2>
             <div className="screenshots-grid">
               {project.screenshots.map((screenshot, index) => {
-                // Find HTML and MD files for this step
-                const stepFiles = project.files?.filter(f =>
-                  f.file_name.includes(`step_${screenshot.step_number}`)
-                );
-                const htmlFile = stepFiles?.find(f => f.file_name.endsWith('.html'));
-                const mdFile = stepFiles?.find(f => f.file_name.endsWith('.md'));
+                // Use paths from screenshot object instead of searching in files
+                const htmlPath = screenshot.html_path;
+                const mdPath = screenshot.markdown_path;
 
                 return (
                   <div key={screenshot.id} className="screenshot-card">
@@ -210,22 +207,42 @@ function ProjectDetail({ token, onLogout }) {
                           {screenshot.action_description}
                         </div>
                       )}
-                      {(htmlFile || mdFile) && (
+                      {(htmlPath || mdPath || screenshot.markdown_content) && (
                         <div className="screenshot-files">
-                          {htmlFile && (
-                            <button
+                          {htmlPath && (
+                            <a
+                              href={`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${htmlPath}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="file-btn-small"
-                              onClick={() => handleDownload(htmlFile.id, htmlFile.file_name)}
                             >
                               📄 HTML
-                            </button>
+                            </a>
                           )}
-                          {mdFile && (
-                            <button
+                          {mdPath && (
+                            <a
+                              href={`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${mdPath}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="file-btn-small"
-                              onClick={() => handleDownload(mdFile.id, mdFile.file_name)}
                             >
                               📝 Markdown
+                            </a>
+                          )}
+                          {screenshot.markdown_content && (
+                            <button
+                              className="file-btn-small"
+                              onClick={() => {
+                                const blob = new Blob([screenshot.markdown_content], { type: 'text/markdown' });
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `step_${screenshot.step_number}.md`;
+                                link.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                            >
+                              💾 Download MD
                             </button>
                           )}
                         </div>

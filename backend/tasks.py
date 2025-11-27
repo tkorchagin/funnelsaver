@@ -79,17 +79,28 @@ def scrape_funnel(self, project_id):
             # Use project_dir as run_dir (scraper will write directly there)
             run_dir = project_dir
 
-            # Process screenshots and HTML files (already in project_dir)
+            # Process screenshots, HTML and MD files (already in project_dir)
             step_number = 0
             while True:
                 screenshot_file = f'step_{step_number}.png'
                 html_file = f'step_{step_number}.html'
+                md_file = f'step_{step_number}.md'
 
                 screenshot_path = os.path.join(project_dir, screenshot_file)
                 html_path = os.path.join(project_dir, html_file)
+                md_path = os.path.join(project_dir, md_file)
 
                 if not os.path.exists(screenshot_path):
                     break
+
+                # Read markdown content if exists
+                markdown_content = None
+                if os.path.exists(md_path):
+                    try:
+                        with open(md_path, 'r', encoding='utf-8') as f:
+                            markdown_content = f.read()
+                    except:
+                        pass
 
                 # Store screenshot in database (file already in place)
                 screenshot = Screenshot(
@@ -97,6 +108,9 @@ def scrape_funnel(self, project_id):
                     step_number=step_number,
                     url=project.url,  # Will be updated from report data
                     screenshot_path=f'project_{project_id}/{screenshot_file}',
+                    html_path=f'project_{project_id}/{html_file}' if os.path.exists(html_path) else None,
+                    markdown_path=f'project_{project_id}/{md_file}' if os.path.exists(md_path) else None,
+                    markdown_content=markdown_content,
                     action_description=f'Step {step_number}'
                 )
                 db.session.add(screenshot)
@@ -108,16 +122,6 @@ def scrape_funnel(self, project_id):
                     'screenshot_id': screenshot.id,
                     'screenshot_path': f'project_{project_id}/{screenshot_file}'
                 })
-
-                # Store HTML if exists (file already in place)
-                if os.path.exists(html_path):
-                    html_file_record = File(
-                        project_id=project_id,
-                        file_type='html',
-                        file_path=f'project_{project_id}/{html_file}',
-                        file_name=html_file
-                    )
-                    db.session.add(html_file_record)
 
                 step_number += 1
 

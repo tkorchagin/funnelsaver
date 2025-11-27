@@ -141,6 +141,8 @@ def get_project(project_id):
             'step_number': s.step_number,
             'url': s.url,
             'screenshot_path': s.screenshot_path,
+            'html_path': s.html_path,
+            'markdown_path': s.markdown_path,
             'action_description': s.action_description,
             'markdown_content': s.markdown_content
         } for s in screenshots],
