@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './components/Login';
+import Login from './components/Login.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import ProjectDetail from './components/ProjectDetail.jsx';
 import './App.css';

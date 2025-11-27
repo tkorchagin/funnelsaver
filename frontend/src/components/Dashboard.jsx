@@ -101,7 +101,7 @@ function Dashboard({ onLogout, token }) {
       <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold">
               FunnelSaver
             </h1>
             {!isAdmin && (
@@ -110,7 +110,7 @@ function Dashboard({ onLogout, token }) {
               </Badge>
             )}
             {isAdmin && (
-              <Badge className="bg-amber-500 text-white hover:bg-amber-600">
+              <Badge>
                 Admin
               </Badge>
             )}
@@ -152,12 +152,12 @@ function Dashboard({ onLogout, token }) {
 
         {/* Buy Credits - Always Visible */}
         {!isAdmin && (
-          <Card className="mb-8 border-blue-200 bg-blue-50/50">
+          <Card className="mb-8 border-slate-200 bg-slate-50">
             <CardContent className="py-4">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                  <p className="font-medium text-blue-900">Need more credits?</p>
-                  <p className="text-sm text-blue-700">Purchase additional credits to scrape more funnels</p>
+                  <p className="font-medium">Need more credits?</p>
+                  <p className="text-sm text-muted-foreground">Purchase additional credits to scrape more funnels</p>
                 </div>
                 <Button
                   variant="default"

@@ -326,9 +326,9 @@ function ProjectDetail({ token, onLogout }) {
 
         {/* Processing Message */}
         {project.status === 'processing' && (
-          <Card className="mt-8 border-blue-200 bg-blue-50/50">
+          <Card className="mt-8 border-slate-200 bg-slate-50">
             <CardContent className="py-4 text-center">
-              <p className="text-blue-900 font-medium">
+              <p className="font-medium">
                 🔄 Scraping in progress... This page will update automatically.
               </p>
             </CardContent>
