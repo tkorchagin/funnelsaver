@@ -9,6 +9,7 @@ function ProjectDetail({ token, onLogout }) {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
     loadProject();
@@ -82,6 +83,40 @@ function ProjectDetail({ token, onLogout }) {
     document.body.removeChild(link);
   };
 
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+  };
+
+  const closeLightbox = () => {
+    setLightboxIndex(null);
+  };
+
+  const nextImage = (e) => {
+    e.stopPropagation();
+    if (project.screenshots && lightboxIndex < project.screenshots.length - 1) {
+      setLightboxIndex(lightboxIndex + 1);
+    }
+  };
+
+  const prevImage = (e) => {
+    e.stopPropagation();
+    if (lightboxIndex > 0) {
+      setLightboxIndex(lightboxIndex - 1);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (lightboxIndex === null) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowRight') nextImage(e);
+    if (e.key === 'ArrowLeft') prevImage(e);
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex]);
+
   if (loading) {
     return (
       <div className="project-detail">
@@ -141,55 +176,90 @@ function ProjectDetail({ token, onLogout }) {
           )}
         </div>
 
-        {project.files && project.files.length > 0 && (
-          <div className="files-section">
-            <h2>Files</h2>
-            <div className="files-list">
-              {project.files.map((file) => (
-                <button
-                  key={file.id}
-                  className="file-btn"
-                  onClick={() => handleDownload(file.id, file.file_name)}
-                >
-                  📄 {file.file_name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {project.screenshots && project.screenshots.length > 0 && (
           <div className="screenshots-section">
             <h2>Screenshots ({project.screenshots.length})</h2>
             <div className="screenshots-grid">
-              {project.screenshots.map((screenshot) => (
-                <div key={screenshot.id} className="screenshot-card">
-                  <div className="screenshot-header">
-                    <span className="step-number">Step {screenshot.step_number}</span>
-                  </div>
-                  <img
-                    src={getScreenshotImage(screenshot.screenshot_path)}
-                    alt={`Step ${screenshot.step_number}`}
-                    className="screenshot-image"
-                  />
-                  <div className="screenshot-info">
-                    <div className="screenshot-url">{screenshot.url}</div>
-                    {screenshot.action_description && (
-                      <div className="screenshot-action">
-                        {screenshot.action_description}
+              {project.screenshots.map((screenshot, index) => {
+                // Find HTML and MD files for this step
+                const stepFiles = project.files?.filter(f =>
+                  f.file_name.includes(`step_${screenshot.step_number}`)
+                );
+                const htmlFile = stepFiles?.find(f => f.file_name.endsWith('.html'));
+                const mdFile = stepFiles?.find(f => f.file_name.endsWith('.md'));
+
+                return (
+                  <div key={screenshot.id} className="screenshot-card">
+                    <div className="screenshot-thumbnail" onClick={() => openLightbox(index)}>
+                      <img
+                        src={getScreenshotImage(screenshot.screenshot_path)}
+                        alt={`Step ${screenshot.step_number}`}
+                        className="screenshot-image"
+                      />
+                      <div className="screenshot-overlay">
+                        <span>🔍 Click to view</span>
                       </div>
-                    )}
-                    {screenshot.markdown_content && (
-                      <details className="markdown-details">
-                        <summary>View Markdown</summary>
-                        <pre className="markdown-content">
-                          {screenshot.markdown_content}
-                        </pre>
-                      </details>
-                    )}
+                    </div>
+                    <div className="screenshot-info">
+                      <div className="screenshot-header">
+                        <span className="step-number">Step {screenshot.step_number}</span>
+                      </div>
+                      <div className="screenshot-url">{screenshot.url}</div>
+                      {screenshot.action_description && (
+                        <div className="screenshot-action">
+                          {screenshot.action_description}
+                        </div>
+                      )}
+                      {(htmlFile || mdFile) && (
+                        <div className="screenshot-files">
+                          {htmlFile && (
+                            <button
+                              className="file-btn-small"
+                              onClick={() => handleDownload(htmlFile.id, htmlFile.file_name)}
+                            >
+                              📄 HTML
+                            </button>
+                          )}
+                          {mdFile && (
+                            <button
+                              className="file-btn-small"
+                              onClick={() => handleDownload(mdFile.id, mdFile.file_name)}
+                            >
+                              📝 Markdown
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Lightbox Modal */}
+        {lightboxIndex !== null && project.screenshots && (
+          <div className="lightbox" onClick={closeLightbox}>
+            <button className="lightbox-close" onClick={closeLightbox}>✕</button>
+            {lightboxIndex > 0 && (
+              <button className="lightbox-prev" onClick={prevImage}>‹</button>
+            )}
+            {lightboxIndex < project.screenshots.length - 1 && (
+              <button className="lightbox-next" onClick={nextImage}>›</button>
+            )}
+            <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path)}
+                alt={`Step ${project.screenshots[lightboxIndex].step_number}`}
+                className="lightbox-image"
+              />
+              <div className="lightbox-info">
+                <div className="lightbox-step">
+                  Step {project.screenshots[lightboxIndex].step_number} / {project.screenshots.length}
                 </div>
-              ))}
+                <div className="lightbox-url">{project.screenshots[lightboxIndex].url}</div>
+              </div>
             </div>
           </div>
         )}
