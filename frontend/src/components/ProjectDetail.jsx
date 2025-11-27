@@ -310,92 +310,92 @@ function ProjectDetail({ token, onLogout }) {
             <h2 className="text-xl font-semibold mb-4">
               Screenshots ({project.screenshots.length})
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {project.screenshots.map((screenshot, index) => {
                 const htmlPath = screenshot.html_path;
-                const mdPath = screenshot.markdown_path;
+                const imageUrl = getScreenshotImage(screenshot.screenshot_path);
 
                 return (
-                  <Card key={screenshot.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div key={screenshot.id} className="group relative">
+                    {/* iPhone-style screenshot card */}
                     <div
-                      className="relative cursor-pointer bg-slate-100 overflow-hidden group"
+                      className="relative cursor-pointer overflow-hidden rounded-[1.5rem] shadow-lg hover:shadow-xl transition-all duration-300"
                       style={{ aspectRatio: '9/19.5' }}
                       onClick={() => openLightbox(index)}
                     >
                       <img
-                        src={getScreenshotImage(screenshot.screenshot_path)}
+                        src={imageUrl}
                         alt={`Step ${screenshot.step_number}`}
                         className="w-full h-full object-cover object-top"
                       />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                        <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium">
-                          🔍 Click to view
-                        </span>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge variant="outline" className="text-xs">
-                          Step {screenshot.step_number}
-                        </Badge>
-                      </div>
-                      {screenshot.url && (
-                        <div className="text-xs text-muted-foreground mb-3 line-clamp-2 break-all">
-                          {makeLinksClickable(screenshot.url)}
-                        </div>
-                      )}
-                      {(htmlPath || mdPath) && (
-                        <div className="flex flex-wrap gap-2">
-                          {htmlPath && (
-                            <a
-                              href={`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${htmlPath}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Button variant="outline" size="sm" className="h-8 text-xs">
-                                <FileCode className="h-3 w-3 mr-1" />
-                                HTML
-                              </Button>
-                            </a>
-                          )}
-                          {mdPath && (
-                            <a
-                              href={`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${mdPath}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Button variant="outline" size="sm" className="h-8 text-xs">
-                                <FileText className="h-3 w-3 mr-1" />
-                                Markdown
-                              </Button>
-                            </a>
-                          )}
+                      
+                      {/* Gradient overlay with buttons - show on hover */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-12 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          {/* Copy Image */}
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="h-7 text-xs bg-white/90 hover:bg-white px-2"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                const response = await fetch(imageUrl);
+                                const blob = await response.blob();
+                                await navigator.clipboard.write([
+                                  new ClipboardItem({ [blob.type]: blob })
+                                ]);
+                              } catch (err) {
+                                console.error('Failed to copy image:', err);
+                              }
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            PNG
+                          </Button>
+
+                          {/* Copy MD */}
                           {screenshot.markdown_content && (
                             <Button
-                              variant="outline"
+                              variant="secondary"
                               size="sm"
-                              className="h-8 text-xs"
+                              className="h-7 text-xs bg-white/90 hover:bg-white px-2"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const blob = new Blob([screenshot.markdown_content], { type: 'text/markdown' });
-                                const url = URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = `step_${screenshot.step_number}.md`;
-                                link.click();
-                                URL.revokeObjectURL(url);
+                                navigator.clipboard.writeText(screenshot.markdown_content);
                               }}
                             >
-                              <Download className="h-3 w-3 mr-1" />
+                              <FileText className="h-3 w-3 mr-1" />
                               MD
                             </Button>
                           )}
+
+                          {/* Open HTML */}
+                          {htmlPath && (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-7 text-xs bg-white/90 hover:bg-white px-2"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${htmlPath}`, '_blank');
+                              }}
+                            >
+                              <FileCode className="h-3 w-3 mr-1" />
+                              HTML
+                            </Button>
+                          )}
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </div>
+                    </div>
+
+                    {/* Step badge */}
+                    <div className="mt-3 text-center">
+                      <Badge variant="outline" className="text-xs">
+                        Step {screenshot.step_number}
+                      </Badge>
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -425,57 +425,138 @@ function ProjectDetail({ token, onLogout }) {
       {/* Lightbox Modal */}
       {lightboxIndex !== null && project.screenshots && (
         <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-white z-50 flex flex-col"
           onClick={closeLightbox}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white hover:bg-white/20"
-            onClick={closeLightbox}
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-medium">
+                Step {project.screenshots[lightboxIndex].step_number}
+              </h2>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Save button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const link = document.createElement('a');
+                  link.href = getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path);
+                  link.download = `step_${project.screenshots[lightboxIndex].step_number}.png`;
+                  link.click();
+                }}
+              >
+                Save
+              </Button>
+
+              {/* Copy button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    const response = await fetch(getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path));
+                    const blob = await response.blob();
+                    await navigator.clipboard.write([
+                      new ClipboardItem({ [blob.type]: blob })
+                    ]);
+                  } catch (err) {
+                    console.error('Failed to copy image:', err);
+                  }
+                }}
+              >
+                Copy
+              </Button>
+
+              {/* Copy MD button */}
+              {project.screenshots[lightboxIndex].markdown_content && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(project.screenshots[lightboxIndex].markdown_content);
+                  }}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  MD
+                </Button>
+              )}
+
+              {/* Open HTML button */}
+              {project.screenshots[lightboxIndex].html_path && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${project.screenshots[lightboxIndex].html_path}`, '_blank');
+                  }}
+                >
+                  <FileCode className="h-4 w-4 mr-1" />
+                  HTML
+                </Button>
+              )}
+
+              {/* Close button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={closeLightbox}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Scrollable image container - fit to window */}
+          <div 
+            className="flex-1 overflow-y-auto flex items-center justify-center p-8 bg-slate-50 relative"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X className="h-6 w-6" />
-          </Button>
+            {/* Left arrow */}
+            {lightboxIndex > 0 && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white shadow-lg"
+                onClick={prevImage}
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+            )}
 
-          {lightboxIndex > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-              onClick={prevImage}
-            >
-              <ChevronLeft className="h-8 w-8" />
-            </Button>
-          )}
-
-          {lightboxIndex < project.screenshots.length - 1 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-              onClick={nextImage}
-            >
-              <ChevronRight className="h-8 w-8" />
-            </Button>
-          )}
-
-          <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
             <img
               src={getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path)}
               alt={`Step ${project.screenshots[lightboxIndex].step_number}`}
-              className="w-full h-auto rounded-lg shadow-2xl"
+              className="max-h-full max-w-md w-full object-contain rounded-lg shadow-lg"
             />
-            <div className="mt-4 text-center text-white">
-              <div className="text-lg font-medium">
-                Step {project.screenshots[lightboxIndex].step_number} of {project.screenshots.length}
-              </div>
-              {project.screenshots[lightboxIndex].url && (
-                <div className="text-sm text-white/80 mt-2 break-all">
-                  {makeLinksClickable(project.screenshots[lightboxIndex].url)}
-                </div>
-              )}
-            </div>
+
+            {/* Right arrow */}
+            {lightboxIndex < project.screenshots.length - 1 && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white shadow-lg"
+                onClick={nextImage}
+              >
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+            )}
           </div>
+
+          {/* Footer info */}
+          {project.screenshots[lightboxIndex].url && (
+            <div className="p-4 border-t text-center bg-white">
+              <div className="text-sm text-muted-foreground">
+                {project.screenshots[lightboxIndex].url}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
