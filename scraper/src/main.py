@@ -9,7 +9,8 @@ from src.reporter import Reporter
 
 async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                       interactive: bool = False, max_steps: int = 20, debug: bool = False,
-                      pause_at_step: int = None, keep_open: bool = False, output_dir: str = None):
+                      pause_at_step: int = None, keep_open: bool = False, output_dir: str = None,
+                      on_step_completed = None):
     from urllib.parse import urlparse
 
     config = Config(config_path) if config_path else Config()
@@ -60,6 +61,17 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         html_path = await scraper.save_html(page, 0)
         markdown_content = await scraper.extract_markdown(page)
         reporter.record_step(0, page.url, screenshot_path, markdown_content, "Initial page load")
+        
+        if on_step_completed:
+            await on_step_completed({
+                'step': 0,
+                'url': page.url,
+                'screenshot_path': screenshot_path,
+                'html_path': html_path,
+                'markdown_content': markdown_content,
+                'action_desc': "Initial page load"
+            })
+
         visited_urls.add(page.url)
 
         # Steps 1-N: Click through funnel
@@ -130,6 +142,17 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
             # Record step
             print(f"[Step {step}] Recording step data...")
             reporter.record_step(step, page.url, screenshot_path, markdown_content, action_desc)
+
+            if on_step_completed:
+                await on_step_completed({
+                    'step': step,
+                    'url': page.url,
+                    'screenshot_path': screenshot_path,
+                    'html_path': html_path,
+                    'markdown_content': markdown_content,
+                    'action_desc': action_desc
+                })
+
             visited_urls.add(page.url)
             # Break if no clickable elements
             if action_desc == "No clickable elements found":

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProject, getScreenshotImage, togglePublic } from '../api';
+import { getProject, getScreenshotImage, togglePublic, cancelProject } from '../api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -15,6 +15,7 @@ function ProjectDetail({ token, onLogout }) {
   const [error, setError] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -113,6 +114,21 @@ function ProjectDetail({ token, onLogout }) {
       setProject({ ...project, is_public: response.data.is_public });
     } catch (err) {
       console.error('Failed to toggle public', err);
+    }
+  };
+
+  const handleStopProject = async () => {
+    if (!window.confirm('Are you sure you want to stop this project?')) return;
+    
+    setStopping(true);
+    try {
+      await cancelProject(id);
+      // Status update will come via SSE or next poll
+    } catch (err) {
+      console.error('Failed to stop project', err);
+      alert('Failed to stop project');
+    } finally {
+      setStopping(false);
     }
   };
 
@@ -222,9 +238,21 @@ function ProjectDetail({ token, onLogout }) {
                   {project.completed_at && ` • Completed ${formatDate(project.completed_at)}`}
                 </CardDescription>
               </div>
-              <Badge variant={getStatusVariant(project.status)} className="self-start">
-                {project.status}
-              </Badge>
+              <div className="flex items-center gap-2 self-start">
+                {(project.status === 'queued' || project.status === 'processing') && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={handleStopProject}
+                    disabled={stopping}
+                  >
+                    {stopping ? 'Stopping...' : 'Stop'}
+                  </Button>
+                )}
+                <Badge variant={getStatusVariant(project.status)}>
+                  {project.status}
+                </Badge>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

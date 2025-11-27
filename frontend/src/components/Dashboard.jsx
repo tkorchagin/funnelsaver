@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProjects, createProject } from '../api';
+import { getProjects, createProject, getCurrentUser } from '../api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -22,10 +22,14 @@ function Dashboard({ onLogout, token }) {
     return () => clearInterval(interval);
   }, []);
 
-  const loadUserInfo = () => {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-    setCredits(userInfo.credits || 1);
-    setIsAdmin(userInfo.is_admin || false);
+  const loadUserInfo = async () => {
+    try {
+      const response = await getCurrentUser();
+      setCredits(response.data.credits);
+      setIsAdmin(response.data.is_admin);
+    } catch (err) {
+      console.error('Failed to load user info', err);
+    }
   };
 
   const loadProjects = async () => {

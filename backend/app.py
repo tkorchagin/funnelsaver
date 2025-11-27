@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import timedelta
+from datetime import timedelta, datetime
 import os
 from dotenv import load_dotenv
 
@@ -72,6 +72,22 @@ def login():
     return jsonify({
         'access_token': access_token,
         'username': username,
+        'is_admin': user.is_admin,
+        'credits': user.credits
+    }), 200
+
+
+@app.route('/api/auth/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+        
+    return jsonify({
+        'username': user.username,
         'is_admin': user.is_admin,
         'credits': user.credits
     }), 200
@@ -304,6 +320,71 @@ def toggle_public(project_id):
         'id': project.id,
         'is_public': project.is_public
     }), 200
+
+
+@app.route('/api/projects/<int:project_id>/cancel', methods=['POST'])
+@jwt_required()
+def cancel_project(project_id):
+    """Cancel a running project"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+
+    project = Project.query.filter_by(id=project_id).first()
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    if project.user_id != user_id and not (user and user.is_admin):
+        return jsonify({'error': 'Not authorized'}), 403
+
+    if project.status not in ['queued', 'processing']:
+        return jsonify({'error': 'Project is not running'}), 400
+
+    # Revoke Celery task
+    from celery_config import celery_app
+    
+    # Inspect active and reserved tasks to find the one for this project
+    i = celery_app.control.inspect()
+    active = i.active()
+    reserved = i.reserved()
+    
+    task_id = None
+    
+    # Check active tasks
+    if active:
+        for worker, tasks in active.items():
+            for task in tasks:
+                # Check if args matches project_id (args is a list, project_id is int)
+                if task.get('args') and task['args'][0] == project_id:
+                    task_id = task['id']
+                    break
+            if task_id: break
+            
+    # Check reserved tasks if not found in active
+    if not task_id and reserved:
+        for worker, tasks in reserved.items():
+            for task in tasks:
+                if task.get('args') and task['args'][0] == project_id:
+                    task_id = task['id']
+                    break
+            if task_id: break
+    
+    if task_id:
+        celery_app.control.revoke(task_id, terminate=True)
+        
+    # Update project status
+    project.status = 'failed'
+    project.error = 'Cancelled by user'
+    project.completed_at = datetime.utcnow()
+    db.session.commit()
+    
+    # Send status update event
+    from tasks import send_progress_event
+    send_progress_event(project_id, 'status_changed', {
+        'status': 'failed',
+        'error': 'Cancelled by user'
+    })
+
+    return jsonify({'message': 'Project cancelled'}), 200
 
 
 @app.route('/api/public/projects/<int:project_id>', methods=['GET'])

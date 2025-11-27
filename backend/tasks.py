@@ -68,62 +68,65 @@ def scrape_funnel(self, project_id):
             project_dir = os.path.join(app.config['UPLOAD_FOLDER'], f'project_{project_id}')
             os.makedirs(project_dir, exist_ok=True)
 
-            # Run the scraper with custom output directory
+            # Define callback for real-time updates
+            async def on_step_completed(step_data):
+                """Callback called by scraper after each step"""
+                try:
+                    # We need to run sync DB operations inside async callback
+                    # Since we are in the same thread, we can use the app context
+                    # but let's be safe and re-establish it if needed, though
+                    # here we are just using the outer scope variables.
+                    
+                    step_number = step_data['step']
+                    screenshot_path_abs = step_data['screenshot_path']
+                    html_path_abs = step_data['html_path']
+                    
+                    # Convert absolute paths to relative paths for DB/Frontend
+                    # The scraper writes to project_dir which is uploads/project_{id}
+                    # We want paths like project_{id}/step_0.png
+                    
+                    rel_screenshot_path = f"project_{project_id}/{os.path.basename(screenshot_path_abs)}"
+                    rel_html_path = f"project_{project_id}/{os.path.basename(html_path_abs)}" if html_path_abs else None
+                    
+                    # Markdown content is passed directly
+                    markdown_content = step_data.get('markdown_content')
+                    
+                    # Create screenshot record
+                    screenshot = Screenshot(
+                        project_id=project_id,
+                        step_number=step_number,
+                        url=step_data['url'],
+                        screenshot_path=rel_screenshot_path,
+                        html_path=rel_html_path,
+                        markdown_path=None, # Will be set at end if needed, or we can save per step
+                        markdown_content=markdown_content,
+                        action_description=step_data.get('action_desc', f'Step {step_number}')
+                    )
+                    
+                    db.session.add(screenshot)
+                    db.session.commit()
+                    
+                    # Send screenshot added event
+                    send_progress_event(project_id, 'screenshot_added', {
+                        'step_number': step_number,
+                        'screenshot_id': screenshot.id,
+                        'screenshot_path': rel_screenshot_path
+                    })
+                    
+                except Exception as e:
+                    print(f"Error in on_step_completed: {e}")
+
+            # Run the scraper with custom output directory and callback
             asyncio.run(run_funnel(
                 url=project.url,
                 headless=True,
-                max_steps=20,
-                output_dir=project_dir
+                max_steps=100,
+                output_dir=project_dir,
+                on_step_completed=on_step_completed
             ))
 
             # Use project_dir as run_dir (scraper will write directly there)
             run_dir = project_dir
-
-            # Process screenshots, HTML and MD files (already in project_dir)
-            step_number = 0
-            while True:
-                screenshot_file = f'step_{step_number}.png'
-                html_file = f'step_{step_number}.html'
-                md_file = f'step_{step_number}.md'
-
-                screenshot_path = os.path.join(project_dir, screenshot_file)
-                html_path = os.path.join(project_dir, html_file)
-                md_path = os.path.join(project_dir, md_file)
-
-                if not os.path.exists(screenshot_path):
-                    break
-
-                # Read markdown content if exists
-                markdown_content = None
-                if os.path.exists(md_path):
-                    try:
-                        with open(md_path, 'r', encoding='utf-8') as f:
-                            markdown_content = f.read()
-                    except:
-                        pass
-
-                # Store screenshot in database (file already in place)
-                screenshot = Screenshot(
-                    project_id=project_id,
-                    step_number=step_number,
-                    url=project.url,  # Will be updated from report data
-                    screenshot_path=f'project_{project_id}/{screenshot_file}',
-                    html_path=f'project_{project_id}/{html_file}' if os.path.exists(html_path) else None,
-                    markdown_path=f'project_{project_id}/{md_file}' if os.path.exists(md_path) else None,
-                    markdown_content=markdown_content,
-                    action_description=f'Step {step_number}'
-                )
-                db.session.add(screenshot)
-                db.session.commit()  # Commit immediately so SSE can see it
-
-                # Send screenshot added event
-                send_progress_event(project_id, 'screenshot_added', {
-                    'step_number': step_number,
-                    'screenshot_id': screenshot.id,
-                    'screenshot_path': f'project_{project_id}/{screenshot_file}'
-                })
-
-                step_number += 1
 
             # Store report files in database (files already in place)
             report_md_path = os.path.join(project_dir, 'funnel_report.md')

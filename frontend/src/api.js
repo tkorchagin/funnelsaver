@@ -63,8 +63,16 @@ export const togglePublic = (projectId) => {
   return api.post(`/projects/${projectId}/toggle-public`);
 };
 
+export const cancelProject = (projectId) => {
+  return api.post(`/projects/${projectId}/cancel`);
+};
+
 export const getPublicProject = (id) => {
   return axios.get(`${API_URL}/api/public/projects/${id}`);
+};
+
+export const getCurrentUser = () => {
+  return api.get('/auth/me');
 };
 
 export default api;
