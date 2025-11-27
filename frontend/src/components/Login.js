@@ -22,6 +22,11 @@ function Login({ onLogin }) {
         alert('Account created! Please login.');
       } else {
         const response = await login(username, password);
+        localStorage.setItem('userInfo', JSON.stringify({
+          username: response.data.username,
+          is_admin: response.data.is_admin,
+          credits: response.data.credits
+        }));
         onLogin(response.data.access_token);
       }
     } catch (err) {

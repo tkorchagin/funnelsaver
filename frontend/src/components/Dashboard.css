@@ -16,6 +16,28 @@
   color: #333;
 }
 
+.credits-badge {
+  display: inline-block;
+  background: #667eea;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.admin-badge {
+  display: inline-block;
+  background: #f39c12;
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
 .logout-btn {
   padding: 10px 20px;
   background: #e74c3c;
@@ -165,4 +187,76 @@
   color: #e74c3c;
   border-radius: 5px;
   font-size: 12px;
+}
+
+.project-user {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Payment Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.modal-content p {
+  color: #666;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.payment-link {
+  display: inline-block;
+  padding: 15px 30px;
+  background: #0088cc;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.3s;
+  margin-bottom: 15px;
+}
+
+.payment-link:hover {
+  background: #006699;
+}
+
+.close-modal-btn {
+  padding: 10px 25px;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.close-modal-btn:hover {
+  background: #7f8c8d;
 }

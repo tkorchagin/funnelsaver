@@ -69,14 +69,25 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     access_token = create_access_token(identity=str(user.id))
-    return jsonify({'access_token': access_token, 'username': username}), 200
+    return jsonify({
+        'access_token': access_token,
+        'username': username,
+        'is_admin': user.is_admin,
+        'credits': user.credits
+    }), 200
 
 
 @app.route('/api/projects', methods=['GET'])
 @jwt_required()
 def get_projects():
     user_id = int(get_jwt_identity())
-    projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
+    user = User.query.get(user_id)
+
+    # Admin sees all projects, regular users see only their own
+    if user and user.is_admin:
+        projects = Project.query.order_by(Project.created_at.desc()).all()
+    else:
+        projects = Project.query.filter_by(user_id=user_id).order_by(Project.created_at.desc()).all()
 
     return jsonify([{
         'id': p.id,
@@ -84,7 +95,9 @@ def get_projects():
         'status': p.status,
         'created_at': p.created_at.isoformat(),
         'completed_at': p.completed_at.isoformat() if p.completed_at else None,
-        'error': p.error
+        'error': p.error,
+        'user_id': p.user_id,
+        'username': p.user.username if user and user.is_admin else None
     } for p in projects]), 200
 
 
@@ -92,6 +105,19 @@ def get_projects():
 @jwt_required()
 def create_project():
     user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Check if user has credits (admin has unlimited)
+    if not user.is_admin and user.credits <= 0:
+        return jsonify({
+            'error': 'No credits available',
+            'payment_required': True,
+            'telegram_link': 'https://t.me/tkorchagin'
+        }), 402
+
     data = request.get_json()
     url = data.get('url')
 
@@ -104,6 +130,11 @@ def create_project():
         status='queued'
     )
     db.session.add(project)
+
+    # Deduct credit if not admin
+    if not user.is_admin:
+        user.credits -= 1
+
     db.session.commit()
 
     # Queue Celery task
@@ -113,6 +144,7 @@ def create_project():
         'id': project.id,
         'url': project.url,
         'status': project.status,
+        'credits_remaining': user.credits,
         'created_at': project.created_at.isoformat()
     }), 201
 

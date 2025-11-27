@@ -9,13 +9,23 @@ function Dashboard({ onLogout, token }) {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [credits, setCredits] = useState(1);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     loadProjects();
+    loadUserInfo();
     // Poll for updates every 5 seconds
     const interval = setInterval(loadProjects, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadUserInfo = () => {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    setCredits(userInfo.credits || 1);
+    setIsAdmin(userInfo.is_admin || false);
+  };
 
   const loadProjects = async () => {
     try {
@@ -32,11 +42,18 @@ function Dashboard({ onLogout, token }) {
     setLoading(true);
 
     try {
-      await createProject(url);
+      const response = await createProject(url);
       setUrl('');
+      if (response.data.credits_remaining !== undefined) {
+        setCredits(response.data.credits_remaining);
+      }
       loadProjects();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create project');
+      const errorData = err.response?.data;
+      if (errorData?.payment_required) {
+        setShowPaymentModal(true);
+      }
+      setError(errorData?.error || 'Failed to create project');
     } finally {
       setLoading(false);
     }
@@ -60,7 +77,11 @@ function Dashboard({ onLogout, token }) {
   return (
     <div className="dashboard">
       <header className="dashboard-header">
-        <h1>FunnelSaver</h1>
+        <div>
+          <h1>FunnelSaver</h1>
+          {!isAdmin && <div className="credits-badge">Credits: {credits}</div>}
+          {isAdmin && <div className="admin-badge">Admin</div>}
+        </div>
         <button onClick={onLogout} className="logout-btn">Logout</button>
       </header>
 
@@ -106,6 +127,9 @@ function Dashboard({ onLogout, token }) {
                       {new Date(project.created_at).toLocaleString()}
                     </span>
                   </div>
+                  {isAdmin && project.username && (
+                    <div className="project-user">User: {project.username}</div>
+                  )}
                   {project.error && (
                     <div className="project-error">{project.error}</div>
                   )}
@@ -115,6 +139,27 @@ function Dashboard({ onLogout, token }) {
           )}
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>No Credits Available</h2>
+            <p>You've used your free credit. Purchase more credits to continue scraping funnels.</p>
+            <a
+              href="https://t.me/tkorchagin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="payment-link"
+            >
+              Contact on Telegram to Purchase
+            </a>
+            <button onClick={() => setShowPaymentModal(false)} className="close-modal-btn">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

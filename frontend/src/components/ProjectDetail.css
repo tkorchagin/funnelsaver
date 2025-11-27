@@ -181,7 +181,7 @@
   cursor: pointer;
   overflow: hidden;
   background: #f5f5f5;
-  aspect-ratio: 16/10;
+  aspect-ratio: 9/19.5;  /* iPhone aspect ratio */
 }
 
 .screenshot-image {
