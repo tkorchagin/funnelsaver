@@ -78,38 +78,52 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
             markdown_content = await scraper.extract_markdown(page)
             
             # Perform click (or interactive prompt could be added later)
+            print(f"[Step {step}] Current URL: {page.url}")
+            print(f"[Step {step}] Looking for clickable elements...")
             action_desc = await clicker.click_random(page, initial_domain, visited_urls)
+            print(f"[Step {step}] Action: {action_desc}")
 
             # Check for error messages on page (Network Error, validation errors, etc.)
             page_content = await page.content()
             if "Network Error" in page_content or "network error" in page_content.lower():
                 # Network error detected - wait and try clicking again
-                print(f"Network error detected on step {step}, waiting 5 seconds before retry...")
+                print(f"[Step {step}] ⚠️ Network error detected, waiting 5 seconds before retry...")
                 await page.wait_for_timeout(5000)
                 # Try clicking the same button again
                 retry_action = await clicker.click_random(page, initial_domain, visited_urls)
                 if retry_action != action_desc:
                     action_desc = f"{action_desc} (retried after network error: {retry_action})"
+                print(f"[Step {step}] Retry action: {retry_action}")
 
-            # If no clickable elements found, wait 20 seconds for possible redirect or elements to appear
+            # If no clickable elements found, wait 30 seconds for possible redirect or elements to appear
             # This handles loading pages with auto-redirect or dynamically loaded content
             if action_desc == "No clickable elements found":
+                print(f"[Step {step}] ⏳ No clickable elements found, waiting up to 30 seconds for content to load...")
                 current_url = page.url
-                # Wait up to 20 seconds for redirect or new elements
-                for i in range(20):
+                # Wait up to 30 seconds for redirect or new elements
+                for i in range(30):
                     await page.wait_for_timeout(1000)  # Wait 1 second
                     if page.url != current_url:
                         # Redirect happened, continue to next step
+                        print(f"[Step {step}] ✓ Redirect detected after {i+1}s: {page.url}")
                         action_desc = f"{action_desc} (waited {i+1}s for auto-redirect)"
                         break
                     # Check if clickable elements appeared
                     new_action = await clicker.click_random(page, initial_domain, visited_urls)
                     if new_action != "No clickable elements found":
                         # Elements appeared, click and continue
+                        print(f"[Step {step}] ✓ Elements appeared after {i+1}s: {new_action}")
                         action_desc = f"waited {i+1}s, then {new_action}"
                         break
+                    # Log progress every 5 seconds
+                    if (i + 1) % 5 == 0:
+                        print(f"[Step {step}] Still waiting... ({i+1}/30s)")
+                
+                if action_desc == "No clickable elements found":
+                    print(f"[Step {step}] ❌ No elements found after 30 seconds, stopping funnel")
 
             # Record step
+            print(f"[Step {step}] Recording step data...")
             reporter.record_step(step, page.url, screenshot_path, markdown_content, action_desc)
             visited_urls.add(page.url)
             # Break if no clickable elements

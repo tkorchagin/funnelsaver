@@ -1,529 +1,254 @@
-# Funnel Saver
+# FunnelSaver
 
-Автоматический инструмент для навигации и анализа маркетинговых воронок (funnels).
+Automated funnel scraping tool with web interface, task queue, and real-time progress tracking.
 
-## Возможности
+## Quick Start
 
-- 🤖 Автоматическая навигация по веб-страницам
-- 📸 Скриншоты на каждом шаге
-- 📝 HTML сохранение для отладки
-- 🔍 Извлечение контента в Markdown
-- 📊 JSON отчёты с детализацией каждого шага
-- 🎯 Умное определение кликабельных элементов
-- 🚫 Избегание нежелательных элементов (privacy, terms, back, help)
-- 🌐 Контроль домена (не уходит на сторонние сайты)
-- 📱 Эмуляция мобильных устройств (iPhone 16 Pro Max)
-- ✍️ Автоматическое заполнение форм (email, phone, name, текстовые поля)
-- 🔬 Debug режим с Playwright Inspector
-- 🌐 Логирование сетевых запросов (fetch/XHR)
-- 🔄 Обработка Network Error с retry логикой
-- ⏸️ Пауза на определённом шаге для инспекции
-- 🖥️ Возможность держать браузер открытым после завершения
+1. Clone repository and start with Docker Compose:
+```bash
+git clone <repository-url>
+cd funnelsaver
+docker-compose up --build
+```
 
-## Структура проекта
+2. Access the application:
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:5000
+
+3. Create account, login, and submit funnel URL
+
+## Architecture
+
+FunnelSaver consists of three main components:
 
 ```
 funnelsaver/
-├── src/
-│   ├── __init__.py
-│   ├── config.py          # Конфигурация (viewport, user-agent, дефолтные значения форм)
-│   ├── browser.py         # Playwright wrapper (headless/headed режим, keep-open функция)
-│   ├── clicker.py         # Логика кликов, навигации и автозаполнения форм
-│   ├── scraper.py         # Скриншоты и HTML сохранение
-│   ├── reporter.py        # Генерация отчётов (Markdown + JSON)
-│   └── main.py            # CLI точка входа + сетевое логирование
-├── outputs/               # Результаты запусков (игнорируется git)
-├── debug_email.sh        # Быстрый скрипт для отладки email страницы
-├── requirements.txt       # Python зависимости
-├── setup_venv.sh         # Скрипт создания venv
-└── README.md             # Этот файл
+├── backend/          # Flask REST API + Celery workers
+├── frontend/         # React web application
+├── scraper/          # Playwright browser automation
+└── docker-compose.yml
 ```
 
-## Установка
+### Backend (Flask + Celery + Redis)
+- REST API with JWT authentication
+- SQLite database for users, projects, screenshots
+- Celery task queue with max 2 parallel workers
+- File storage and management
 
-### 1. Создание виртуального окружения
+### Frontend (React)
+- Minimal, clean interface
+- Login/register pages
+- Project submission and listing
+- Detailed view with screenshots and files
 
+### Scraper (Playwright)
+- Automated browser navigation
+- Screenshot capture at each step
+- HTML and markdown extraction
+- Smart form filling and button detection
+
+## Features
+
+- User authentication (JWT)
+- Queue-based scraping (max 2 parallel jobs)
+- Real-time progress tracking
+- Screenshot capture at each funnel step
+- HTML and markdown extraction
+- Downloadable reports (JSON, Markdown)
+- Responsive web interface
+
+## Development Setup
+
+Each component can be developed independently:
+
+### Backend
 ```bash
-./setup_venv.sh
-```
-
-или вручную:
-
-```bash
-python3.13 -m venv .venv
-source .venv/bin/activate
+cd backend
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
+
+# Start Redis
+redis-server
+
+# Start Flask
+python app.py
+
+# Start Celery worker (in separate terminal)
+celery -A celery_config.celery_app worker --loglevel=info --concurrency=2
 ```
 
-### 2. Активация окружения
+See [backend/README.md](backend/README.md) for detailed backend documentation.
 
+### Frontend
 ```bash
-source .venv/bin/activate
+cd frontend
+npm install
+npm start
 ```
 
-## Использование
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
 
-### Базовый запуск
-
+### Scraper
 ```bash
-python -m src.main --url "https://example.com" --max-steps 10
+cd scraper
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium
+
+python -m src.main --url "https://example.com" --max-steps 20
 ```
 
-### Параметры командной строки
+See [scraper/README.md](scraper/README.md) for detailed scraper documentation.
 
-| Параметр | Тип | По умолчанию | Описание |
-|----------|-----|--------------|----------|
-| `--url` | string | **обязательный** | Стартовый URL воронки |
-| `--max-steps` | int | 20 | Максимальное количество шагов |
-| `--config` | string | - | Путь к YAML конфигу (опционально) |
-| `--headless` | flag | true | Headless режим браузера |
-| `--headed` | flag | false | Видимый режим браузера (приоритетнее --headless) |
-| `--interactive` | flag | false | Интерактивный режим (пока не реализован) |
-| `--debug` | flag | false | Режим отладки |
-| `--pause-at` | int | - | Номер шага, на котором нужно остановиться для инспекции |
-| `--keep-open` | flag | false | Не закрывать браузер после завершения |
+## Docker Deployment
 
-### Примеры использования
+**Recommended for production**
 
-#### Простой запуск с видимым браузером
-
+1. Create environment file:
 ```bash
-python -m src.main \
-  --url "https://appnebula.co/moon-compatibility/prelanding" \
-  --max-steps 50 \
-  --headed
+cp backend/.env.example backend/.env
 ```
 
-#### Debug режим: пауза на email странице
+Edit `backend/.env`:
+```
+SECRET_KEY=your-secret-key-change-this
+JWT_SECRET_KEY=your-jwt-secret-change-this
+REDIS_URL=redis://redis:6379/0
+```
 
+2. Start all services:
 ```bash
-python -m src.main \
-  --url "https://appnebula.co/moon-compatibility/prelanding" \
-  --headed \
-  --pause-at 46 \
-  --max-steps 50 \
-  --keep-open
+docker-compose up -d
 ```
 
-Или используйте готовый скрипт:
-
+3. View logs:
 ```bash
-./debug_email.sh
+docker-compose logs -f
 ```
 
-#### С пользовательским конфигом
-
+4. Stop services:
 ```bash
-python -m src.main \
-  --url "https://example.com" \
-  --config .funnelsaver.yml \
-  --max-steps 100
+docker-compose down
 ```
 
-## Структура output
+## API Documentation
 
-Каждый запуск создаёт папку:
+### Authentication
+- `POST /api/auth/register` - Create new user
+- `POST /api/auth/login` - Login and get JWT token
+
+### Projects
+- `GET /api/projects` - List user's projects
+- `POST /api/projects` - Submit new scraping job
+- `GET /api/projects/:id` - Get project details with screenshots
+
+### Files
+- `GET /api/screenshots/:id/image` - Get screenshot image
+- `GET /api/files/:id` - Download HTML/JSON/MD files
+
+See [backend/README.md](backend/README.md) for complete API documentation.
+
+## Project Structure
 
 ```
-outputs/{domain}_{timestamp}/
-├── README.md                        # Информация о запуске
-├── funnel_report.md                 # Сводный отчёт со всеми шагами
-├── funnel_data.json                 # Структурированные данные в JSON
-├── step_0.md                        # Отчёт по шагу 0 (начальная страница)
-├── step_0_{timestamp}.png           # Скриншот шага 0
-├── step_0_{timestamp}.html          # HTML шага 0 (для детальной отладки)
-├── step_1.md                        # Отчёт по шагу 1
-├── step_1_{timestamp}.png           # Скриншот шага 1
-└── ...
+funnelsaver/
+├── backend/
+│   ├── app.py              # Flask app with API endpoints
+│   ├── celery_config.py    # Celery configuration
+│   ├── tasks.py            # Celery tasks (scraping job)
+│   ├── database.py         # Database initialization
+│   ├── models.py           # SQLAlchemy models
+│   ├── requirements.txt    # Python dependencies
+│   ├── Dockerfile
+│   └── README.md           # Backend documentation
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── App.js          # Main app component
+│   │   ├── api.js          # API client
+│   │   └── index.js        # Entry point
+│   ├── package.json
+│   ├── Dockerfile
+│   └── README.md           # Frontend documentation
+│
+├── scraper/
+│   ├── src/
+│   │   ├── main.py         # CLI entry point
+│   │   ├── browser.py      # Playwright wrapper
+│   │   ├── clicker.py      # Navigation logic
+│   │   ├── scraper.py      # Screenshot & HTML capture
+│   │   ├── reporter.py     # Report generation
+│   │   └── config.py       # Configuration
+│   ├── requirements.txt
+│   └── README.md           # Scraper documentation
+│
+├── docker-compose.yml      # Docker orchestration
+└── README.md               # This file
 ```
 
-## Конфигурация
+## Task Queue
 
-Создайте `.funnelsaver.yml`:
+Celery with Redis manages scraping jobs:
+- **Maximum 2 concurrent workers**
+- Automatic retry on failure
+- Queue status visible in frontend
+- Real-time progress updates
 
-```yaml
-viewport:
-  width: 430
-  height: 932
+## Database Schema
 
-user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+### Users
+- Basic authentication (username + hashed password)
 
-max_steps: 20
+### Projects
+- Tracks scraping jobs
+- Status: queued → processing → completed/failed
 
-default_form_values:
-  name: "Alex Johnson"
-  email: "alexjohnson.test@gmail.com"
-  phone: "+1234567890"
-  message: "Test message"
-  location: "San Francisco"
-  text: "Test input"
+### Screenshots
+- One record per funnel step
+- Links to image file and metadata
+
+### Files
+- HTML, JSON, and Markdown reports
+- Associated with projects
+
+## Environment Variables
+
+Create `backend/.env`:
+```
+SECRET_KEY=change-this-secret-key
+JWT_SECRET_KEY=change-this-jwt-secret
+REDIS_URL=redis://redis:6379/0
+DATABASE_URL=sqlite:///funnelsaver.db
 ```
 
-## Детальное описание файлов
+## Contributing
 
-### 📁 src/config.py
+This is an internal tool. For development:
 
-**Что делает:**
-- Читает конфигурацию из YAML файла или использует дефолтные значения
-- Настраивает viewport (размеры окна браузера)
-- Устанавливает User-Agent для эмуляции устройства
-- Определяет дефолтные значения для автозаполнения форм
+1. Read component-specific README:
+   - [Backend Documentation](backend/README.md)
+   - [Frontend Documentation](frontend/README.md)
+   - [Scraper Documentation](scraper/README.md)
 
-**Дефолтные значения:**
-- Viewport: 430x932 (iPhone 16 Pro Max)
-- User-Agent: iPhone 17.0
-- Email: alexjohnson.test@gmail.com
-- Phone: +1234567890
+2. Each component has detailed setup instructions
+3. Use Docker Compose for integrated testing
 
-### 📁 src/browser.py
+## Production Considerations
 
-**Что делает:**
-- Wrapper для Playwright API
-- Управляет жизненным циклом браузера (запуск/закрытие)
-- Поддерживает headless/headed режимы
-- Имеет параметр `keep_open` для сохранения браузера открытым после завершения
+1. Change all secrets in `.env`
+2. Use PostgreSQL instead of SQLite
+3. Set up SSL/TLS with reverse proxy
+4. Configure proper CORS origins
+5. Set up monitoring and logging
+6. Implement backup strategy for database and uploads
+7. Use Gunicorn for Flask in production
+8. Consider horizontal scaling for Celery workers
 
-**Ключевые параметры:**
-- `headless` (bool) - запуск браузера в headless режиме
-- `slow_mo` (int) - замедление операций в миллисекундах
-- `keep_open` (bool) - не закрывать браузер после завершения, ждать Ctrl+C
+## License
 
-**Использование keep_open:**
-```python
-async with Browser(config, headless=False, keep_open=True) as page:
-    # ... ваш код ...
-    # Браузер останется открытым для ручной инспекции
-```
-
-### 📁 src/clicker.py
-
-**Что делает:**
-- Определяет кликабельные элементы (кнопки, ссылки)
-- Автоматически принимает cookie consent баннеры
-- **Автоматически заполняет формы** перед кликом на кнопки
-- Исключает нежелательные элементы (back, help, privacy, etc.)
-- Приоритизирует "Next" и "Continue" кнопки
-
-**Автозаполнение форм:**
-- Распознаёт типы полей: email, phone, name, text, message, location
-- Для email полей использует медленный ввод (`press_sequentially`) с задержкой 100ms между символами
-- После ввода email ждёт 5 секунд для валидации
-- Для остальных полей использует быстрое заполнение (`fill`)
-- Обрабатывает autocomplete dropdown'ы
-
-**Селекторы кнопок:**
-```python
-BUTTON_SELECTORS = [
-    "button",
-    "[role='button']",
-    "input[type='submit']",
-    "input[type='button']",
-    "[data-testid*='button']",
-    "div[onclick]",
-]
-```
-
-**Селекторы полей форм:**
-```python
-input_selectors = [
-    'input[type="text"]',
-    'input[type="email"]',
-    'input[type="tel"]',
-    'input[type="number"]',
-    'input:not([type])',
-    'textarea',
-    '[data-testid*="input"]',
-]
-```
-
-**Исключения (не кликает на эти элементы):**
-```python
-EXCLUDE_PATTERNS = [
-    "back", "назад", "previous", "prev",
-    "help", "помощь", "support", "поддержка",
-    "logo", "логотип", "home", "главная",
-    "privacy", "terms", "cookie", "policy"
-]
-```
-
-### 📁 src/scraper.py
-
-**Что делает:**
-- Делает скриншоты страниц (PNG)
-- Сохраняет HTML контент страниц
-- Извлекает текстовый контент в Markdown формате
-- Создаёт структуру папок для каждого запуска
-
-**Форматы файлов:**
-- Скриншоты: `step_{N}_{timestamp}.png`
-- HTML: `step_{N}_{timestamp}.html`
-- Markdown извлечение включает заголовки, параграфы, ссылки
-
-### 📁 src/reporter.py
-
-**Что делает:**
-- Генерирует два типа отчётов: Markdown и JSON
-- Markdown отчёт (`funnel_report.md`) - читаемый человеком
-- JSON отчёт (`funnel_data.json`) - для программной обработки
-- Создаёт файлы `step_{N}.md` для каждого шага
-
-**Структура JSON отчёта:**
-```json
-{
-  "url": "https://example.com",
-  "timestamp": "2025-11-26T10:00:00",
-  "steps": [
-    {
-      "step": 0,
-      "url": "https://example.com",
-      "action": "Initial page load",
-      "screenshot": "step_0_20251126_100000.png",
-      "content": "Page content..."
-    }
-  ]
-}
-```
-
-### 📁 src/main.py
-
-**Что делает:**
-- CLI точка входа приложения
-- Парсит аргументы командной строки
-- Управляет основным циклом навигации
-- **Логирует все сетевые запросы (fetch/XHR)**
-- Обрабатывает Network Error с retry логикой
-- Поддерживает паузу на определённом шаге для debug
-
-**Сетевое логирование:**
-
-При запуске вы увидите в консоли:
-```
->> OUTGOING: POST https://api.example.com/submit
-<< RESPONSE: 200 https://api.example.com/submit
-!! NETWORK ERROR: https://api.example.com/failed - net::ERR_FAILED
-```
-
-**Event listeners:**
-- `page.on("request")` - логирует исходящие fetch/XHR запросы
-- `page.on("response")` - логирует HTTP ответы с кодами
-- `page.on("requestfailed")` - логирует сетевые ошибки
-
-**Retry логика:**
-- Детектирует "Network Error" в HTML контенте
-- Ждёт 5 секунд и пытается кликнуть кнопку снова
-- Записывает retry в описание действия
-
-**Ожидание auto-redirect:**
-- Если нет кликабельных элементов, ждёт до 20 секунд
-- Проверяет каждую секунду, не появились ли новые элементы
-- Продолжает, если произошёл redirect или появились элементы
-
-### 📁 debug_email.sh
-
-**Что делает:**
-- Быстрый скрипт для отладки проблемы с email страницей
-- Запускает браузер в видимом режиме
-- Останавливается на шаге 46 (около email страницы)
-- Открывает Playwright Inspector для ручной инспекции
-- Держит браузер открытым после завершения
-
-**Как использовать:**
-```bash
-./debug_email.sh
-```
-
-Когда скрипт остановится на шаге 46:
-1. Откроется Playwright Inspector
-2. Можете открыть DevTools (F12)
-3. Посмотреть Network tab для анализа запросов
-4. Проверить Console на ошибки
-5. Вручную протестировать заполнение полей
-6. Нажать "Resume" в Inspector для продолжения
-7. После завершения браузер останется открытым - нажмите Ctrl+C для выхода
-
-## Логика работы
-
-### 1. Инициализация
-- Запускает браузер (Chromium) в headless/headed режиме
-- Настраивает viewport и user-agent из конфига
-- Устанавливает event listeners для сетевых запросов
-- Переходит на стартовый URL
-
-### 2. Step 0 (начальная страница)
-- Принимает cookies если есть баннер
-- Делает скриншот начальной страницы
-- Сохраняет HTML и Markdown контент
-- Добавляет URL в список посещённых
-
-### 3. Steps 1-N (основной цикл)
-
-Для каждого шага:
-
-1. **Пауза для debug** (если указан `--pause-at`)
-   - Открывает Playwright Inspector
-   - Можно вручную инспектировать DOM, Network, Console
-
-2. **Принятие cookies**
-   - Проверяет наличие cookie баннера
-   - Автоматически кликает "Accept" если есть
-
-3. **Автозаполнение форм**
-   - Ищет все видимые input поля
-   - Определяет тип поля (email, phone, name, etc.)
-   - Заполняет соответствующими значениями
-   - Email поля заполняются медленно (100ms/символ) для обхода anti-fraud
-
-4. **Поиск кликабельного элемента**
-   - Сначала ищет кнопки (button, [role='button'], etc.)
-   - Потом ищет ссылки (a)
-   - Приоритизирует кнопки с текстом "Next", "Continue"
-   - Исключает элементы: back, help, privacy, logo
-   - Проверяет, что элемент видим и не disabled
-   - Проверяет домен (не уходит на сторонние сайты)
-   - Проверяет, что URL не посещён ранее
-
-5. **Клик по элементу**
-   - Кликает на выбранный элемент
-   - Ждёт возможных редиректов
-
-6. **Обработка Network Error**
-   - Детектирует "Network Error" в HTML
-   - Ждёт 5 секунд
-   - Пытается кликнуть снова (retry)
-
-7. **Ожидание auto-redirect**
-   - Если нет кликабельных элементов, ждёт до 20 секунд
-   - Каждую секунду проверяет:
-     - Изменился ли URL (произошёл redirect)
-     - Появились ли новые кликабельные элементы
-
-8. **Сохранение результатов**
-   - Делает скриншот
-   - Сохраняет HTML
-   - Извлекает Markdown контент
-   - Записывает шаг в отчёты
-   - Добавляет URL в список посещённых
-
-### 4. Остановка
-
-Цикл останавливается если:
-- Достигнут `max_steps`
-- Нет кликабельных элементов и нет auto-redirect
-- Произошла ошибка навигации
-
-### 5. Финализация
-
-- Генерирует `funnel_report.md` и `funnel_data.json`
-- Если `--keep-open` указан:
-  - Браузер остаётся открытым
-  - Выводит сообщение "Press Ctrl+C to close"
-  - Ждёт прерывания пользователем
-- Если `--keep-open` не указан:
-  - Закрывает браузер автоматически
-
-## Debug и отладка
-
-### Проблема: Network Error при отправке email
-
-**Симптомы:**
-- В HTML появляется текст "Network Error"
-- Кнопка "Continue" не работает
-- Email поле остаётся пустым
-
-**Инструменты для debug:**
-
-1. **Запустить с логированием сети:**
-```bash
-python -m src.main \
-  --url "https://appnebula.co/moon-compatibility/prelanding" \
-  --headed \
-  --max-steps 50
-```
-
-Посмотрите в консоли на:
-- `>> OUTGOING:` - какие запросы отправляются
-- `<< RESPONSE:` - какие статус-коды возвращаются
-- `!! NETWORK ERROR:` - какие запросы падают и почему
-
-2. **Остановиться на email странице:**
-```bash
-./debug_email.sh
-```
-
-Когда откроется Playwright Inspector:
-- Откройте DevTools (F12)
-- Перейдите на вкладку Network
-- Нажмите "Resume" в Inspector
-- Посмотрите, какой запрос падает
-- Проверьте Headers, Payload, Response
-
-3. **Держать браузер открытым после завершения:**
-```bash
-python -m src.main \
-  --url "https://appnebula.co/moon-compatibility/prelanding" \
-  --headed \
-  --max-steps 50 \
-  --keep-open
-```
-
-После завершения скрипта:
-- Браузер останется открытым
-- Можно вручную взаимодействовать со страницей
-- Проверить DOM, попробовать заполнить поле руками
-- Нажать Ctrl+C когда закончите
-
-### Проблема: Поле не заполняется автоматически
-
-**Возможные причины:**
-1. Поле в iframe (не поддерживается пока)
-2. Поле в shadow DOM (не поддерживается пока)
-3. Специфичный селектор (добавьте в `input_selectors` в `clicker.py`)
-4. JavaScript блокирует `fill()` (попробуйте `press_sequentially`)
-
-**Решение:**
-Добавьте debug логирование в `clicker.py`:
-```python
-print(f"Found {len(inputs)} input fields")
-for input_el in inputs:
-    print(f"  - type={input_type}, placeholder={placeholder}, visible={await input_el.is_visible()}")
-```
-
-### Проблема: Кликает не на ту кнопку
-
-**Решение:**
-Добавьте приоритетное ключевое слово в `clicker.py`:
-```python
-PRIORITY_KEYWORDS = ["next", "continue", "далее", "продолжить", "submit", "send", "ваше_слово"]
-```
-
-Или исключите нежелательную кнопку:
-```python
-EXCLUDE_PATTERNS = ["back", "previous", "cancel", "ваш_паттерн"]
-```
-
-## Известные ограничения
-
-1. **iframe** - не поддерживает работу с полями внутри iframe
-2. **Shadow DOM** - не поддерживает элементы внутри shadow DOM
-3. **CAPTCHA** - не обходит капчу
-4. **JavaScript-heavy SPA** - может не дождаться динамической загрузки (использует фиксированные таймауты)
-5. **Anti-bot системы** - может быть заблокирован агрессивными anti-bot решениями
-
-## Roadmap
-
-- [ ] Поддержка iframe
-- [ ] Поддержка shadow DOM
-- [ ] Умное ожидание (waitForNetworkIdle вместо фиксированных таймаутов)
-- [ ] Интерактивный режим (выбор кнопки вручную)
-- [ ] A/B тестирование (рандомизация выборов)
-- [ ] Экспорт в CSV
-- [ ] Dashboard для визуализации воронок
-
-## Лицензия
-
-MIT
-
-## Авторы
-
-Разработано с помощью Claude Code
+Proprietary
