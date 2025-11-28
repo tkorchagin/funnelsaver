@@ -139,11 +139,11 @@ function ProjectDetail({ token, onLogout }) {
     return (
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-          <div className="container flex h-14 items-center">
+          <div className="container mx-auto flex h-14 items-center px-4 max-w-7xl">
             <Skeleton className="h-8 w-32" />
           </div>
         </header>
-        <main className="container py-6">
+        <main className="container mx-auto px-4 py-6 max-w-7xl">
           <Card className="mb-6">
             <CardHeader>
               <Skeleton className="h-6 w-3/4 mb-2" />
@@ -178,7 +178,7 @@ function ProjectDetail({ token, onLogout }) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center gap-4">
+        <div className="container mx-auto flex h-14 items-center gap-4 px-4 max-w-7xl">
           <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
@@ -192,7 +192,7 @@ function ProjectDetail({ token, onLogout }) {
         </div>
       </header>
 
-      <main className="container py-6">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Project Info */}
         <Card className="mb-6">
           <CardHeader>

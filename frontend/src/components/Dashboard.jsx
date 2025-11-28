@@ -101,7 +101,7 @@ function Dashboard({ onLogout, token }) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
+        <div className="container mx-auto flex h-14 items-center px-4">
           <div className="mr-4 flex">
             <h1 className="text-xl font-bold">FunnelSaver</h1>
           </div>
@@ -121,7 +121,7 @@ function Dashboard({ onLogout, token }) {
         </div>
       </header>
 
-      <main className="container py-6">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Submit Form */}
         <Card className="mb-6">
           <CardHeader>

@@ -55,11 +55,11 @@ function PublicProject() {
     return (
       <div className="min-h-screen bg-background">
         <header className="w-full border-b bg-background/95 backdrop-blur">
-          <div className="container flex h-14 items-center">
+          <div className="container mx-auto flex h-14 items-center px-4 max-w-7xl">
             <Skeleton className="h-8 w-40" />
           </div>
         </header>
-        <main className="container py-6">
+        <main className="container mx-auto px-4 py-6 max-w-7xl">
           <Card className="mb-6">
             <CardHeader>
               <Skeleton className="h-6 w-3/4 mb-2" />
@@ -91,7 +91,7 @@ function PublicProject() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4 max-w-7xl">
           <div>
             <h1 className="text-xl font-bold">FunnelSaver</h1>
             <p className="text-xs text-muted-foreground">
@@ -102,7 +102,7 @@ function PublicProject() {
         </div>
       </header>
 
-      <main className="container py-6">
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
         {/* Project Info */}
         <Card className="mb-6">
           <CardHeader>
