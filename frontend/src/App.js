@@ -4,7 +4,6 @@ import Login from './components/Login.jsx';
 import Dashboard from './components/Dashboard.jsx';
 import ProjectDetail from './components/ProjectDetail.jsx';
 import PublicProject from './components/PublicProject.jsx';
-import './App.css';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));

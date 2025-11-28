@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects, createProject, getCurrentUser } from '../api';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Alert, AlertDescription } from './ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { AlertCircle, Plus } from 'lucide-react';
 
 function Dashboard({ onLogout, token }) {
   const navigate = useNavigate();
@@ -53,7 +57,6 @@ function Dashboard({ onLogout, token }) {
         setCredits(response.data.credits_remaining);
       }
       loadProjects();
-      // Navigate to the new project
       if (response.data.id) {
         navigate(`/project/${response.data.id}`);
       }
@@ -70,16 +73,11 @@ function Dashboard({ onLogout, token }) {
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case 'completed':
-        return 'default';
-      case 'processing':
-        return 'secondary';
-      case 'failed':
-        return 'destructive';
-      case 'queued':
-        return 'outline';
-      default:
-        return 'outline';
+      case 'completed': return 'default';
+      case 'processing': return 'secondary';
+      case 'failed': return 'destructive';
+      case 'queued': return 'outline';
+      default: return 'outline';
     }
   };
 
@@ -100,134 +98,131 @@ function Dashboard({ onLogout, token }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold">
-              FunnelSaver
-            </h1>
-            {!isAdmin && (
-              <Badge variant="secondary" className="text-sm">
-                {credits} {credits === 1 ? 'credit' : 'credits'}
-              </Badge>
-            )}
-            {isAdmin && (
-              <Badge>
-                Admin
-              </Badge>
-            )}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 flex">
+            <h1 className="text-xl font-bold">FunnelSaver</h1>
           </div>
-          <Button variant="ghost" onClick={onLogout}>
-            Logout
-          </Button>
+          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <div className="flex items-center gap-2">
+              {!isAdmin && (
+                <Badge variant="secondary">
+                  {credits} {credits === 1 ? 'credit' : 'credits'}
+                </Badge>
+              )}
+              {isAdmin && <Badge>Admin</Badge>}
+              <Button variant="ghost" size="sm" onClick={onLogout}>
+                Logout
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container py-6">
         {/* Submit Form */}
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle>Create New Funnel</CardTitle>
             <CardDescription>Enter a URL to start scraping the funnel</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
-              <input
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <Input
                 type="url"
                 placeholder="https://example.com/funnel"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 required
-                className="flex-1 px-4 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                className="flex-1"
               />
-              <Button type="submit" disabled={loading} className="sm:w-auto">
-                {loading ? 'Creating...' : 'Submit Funnel'}
+              <Button type="submit" disabled={loading}>
+                <Plus className="mr-2 h-4 w-4" />
+                {loading ? 'Creating...' : 'Create'}
               </Button>
             </form>
             {error && (
-              <div className="mt-4 text-sm text-destructive">
-                {error}
-              </div>
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
 
-        {/* Buy Credits - Always Visible */}
+        {/* Buy Credits */}
         {!isAdmin && (
-          <Card className="mb-8 border-slate-200 bg-slate-50">
-            <CardContent className="py-4">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
-                  <p className="font-medium">Need more credits?</p>
-                  <p className="text-sm text-muted-foreground">Purchase additional credits to scrape more funnels</p>
-                </div>
-                <Button
-                  variant="default"
-                  onClick={() => setShowPaymentModal(true)}
-                  className="w-full sm:w-auto"
-                >
-                  Buy Credits
-                </Button>
+          <Card className="mb-6 bg-muted/50">
+            <CardContent className="flex items-center justify-between gap-4 pt-6">
+              <div>
+                <p className="font-medium">Need more credits?</p>
+                <p className="text-sm text-muted-foreground">
+                  Purchase additional credits to scrape more funnels
+                </p>
               </div>
+              <Button onClick={() => setShowPaymentModal(true)}>
+                Buy Credits
+              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Projects List */}
+        {/* Projects */}
         <div className="mb-4">
-          <h2 className="text-xl font-semibold mb-4">
+          <h2 className="text-lg font-semibold">
             {isAdmin ? 'All Projects' : 'Your Projects'}
           </h2>
         </div>
 
         {projects.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
+            <CardContent className="flex min-h-[200px] items-center justify-center">
+              <p className="text-sm text-muted-foreground">
                 No projects yet. Submit a URL to get started!
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <Card
                 key={project.id}
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer transition-shadow hover:shadow-md"
                 onClick={() => navigate(`/project/${project.id}`)}
               >
-                <CardHeader>
+                <CardHeader className="space-y-1">
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-base line-clamp-2 break-all">
+                    <CardTitle className="line-clamp-2 text-base break-all">
                       {project.url}
                     </CardTitle>
-                    <Badge variant={getStatusVariant(project.status)}>
+                    <Badge variant={getStatusVariant(project.status)} className="shrink-0">
                       {project.status}
                     </Badge>
                   </div>
+                  <CardDescription className="space-y-1">
+                    {isAdmin && project.username && (
+                      <div className="text-xs">User: {project.username}</div>
+                    )}
+                    <div className="text-xs">{formatDate(project.created_at)}</div>
+                    {project.screenshot_count !== undefined && (
+                      <div className="text-xs">
+                        {project.screenshot_count} {project.screenshot_count === 1 ? 'step' : 'steps'}
+                      </div>
+                    )}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {isAdmin && project.username && (
-                    <div className="text-sm text-muted-foreground">
-                      👤 {project.username}
-                    </div>
-                  )}
-                  <div className="text-sm text-muted-foreground">
-                    📅 {formatDate(project.created_at)}
-                  </div>
-                  {project.screenshot_count !== undefined && (
-                    <div className="text-sm text-muted-foreground">
-                      📸 {project.screenshot_count} {project.screenshot_count === 1 ? 'step' : 'steps'}
-                    </div>
-                  )}
-                  {project.error && (
-                    <div className="text-sm text-destructive line-clamp-2">
-                      ⚠️ {project.error}
-                    </div>
-                  )}
-                </CardContent>
+                {project.error && (
+                  <CardContent>
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="line-clamp-2">
+                        {project.error}
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                )}
               </Card>
             ))}
           </div>
@@ -235,47 +230,35 @@ function Dashboard({ onLogout, token }) {
       </main>
 
       {/* Payment Modal */}
-      {showPaymentModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowPaymentModal(false)}
-        >
-          <Card
-            className="max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CardHeader>
-              <CardTitle>Purchase Credits</CardTitle>
-              <CardDescription>
-                Get more credits to continue scraping funnels
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Contact us on Telegram to purchase additional credits and unlock unlimited funnel scraping.
-              </p>
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Purchase Credits</DialogTitle>
+            <DialogDescription>
+              Get more credits to continue scraping funnels
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Contact us on Telegram to purchase additional credits and unlock unlimited funnel scraping.
+            </p>
+            <Button asChild className="w-full">
               <a
                 href="https://t.me/tkorchagin"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Button className="w-full">
-                  Contact on Telegram
-                </Button>
+                Contact on Telegram
               </a>
-            </CardContent>
-            <CardFooter>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowPaymentModal(false)}
-              >
-                Close
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentModal(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

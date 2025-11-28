@@ -5,7 +5,22 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
-import { ArrowLeft, Download, FileCode, FileText, X, ChevronLeft, ChevronRight, Globe, Copy, Check } from 'lucide-react';
+import { Label } from './ui/label';
+import { Alert, AlertDescription } from './ui/alert';
+import { Skeleton } from './ui/skeleton';
+import { Separator } from './ui/separator';
+import {
+  ArrowLeft,
+  AlertCircle,
+  Globe,
+  Copy,
+  Check,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  FileCode,
+  FileText
+} from 'lucide-react';
 
 function ProjectDetail({ token, onLogout }) {
   const { id } = useParams();
@@ -20,7 +35,6 @@ function ProjectDetail({ token, onLogout }) {
   useEffect(() => {
     loadProject();
 
-    // Set up Server-Sent Events for real-time updates
     const token = localStorage.getItem('token');
     if (!token) return;
 
@@ -31,8 +45,6 @@ function ProjectDetail({ token, onLogout }) {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('SSE event received:', data);
-
         if (data.type === 'screenshot_added') {
           loadProject();
         } else if (data.type === 'status_changed') {
@@ -46,8 +58,7 @@ function ProjectDetail({ token, onLogout }) {
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE error:', error);
+    eventSource.onerror = () => {
       eventSource.close();
     };
 
@@ -61,7 +72,7 @@ function ProjectDetail({ token, onLogout }) {
       eventSource.close();
       clearInterval(interval);
     };
-  }, [id]);
+  }, [id, project?.status]);
 
   const loadProject = async () => {
     try {
@@ -74,40 +85,6 @@ function ProjectDetail({ token, onLogout }) {
     }
   };
 
-  const openLightbox = (index) => {
-    setLightboxIndex(index);
-  };
-
-  const closeLightbox = () => {
-    setLightboxIndex(null);
-  };
-
-  const nextImage = (e) => {
-    e.stopPropagation();
-    if (project.screenshots && lightboxIndex < project.screenshots.length - 1) {
-      setLightboxIndex(lightboxIndex + 1);
-    }
-  };
-
-  const prevImage = (e) => {
-    e.stopPropagation();
-    if (lightboxIndex > 0) {
-      setLightboxIndex(lightboxIndex - 1);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (lightboxIndex === null) return;
-    if (e.key === 'Escape') closeLightbox();
-    if (e.key === 'ArrowRight') nextImage(e);
-    if (e.key === 'ArrowLeft') prevImage(e);
-  };
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxIndex]);
-
   const handleTogglePublic = async () => {
     try {
       const response = await togglePublic(id);
@@ -119,11 +96,9 @@ function ProjectDetail({ token, onLogout }) {
 
   const handleStopProject = async () => {
     if (!window.confirm('Are you sure you want to stop this project?')) return;
-    
     setStopping(true);
     try {
       await cancelProject(id);
-      // Status update will come via SSE or next poll
     } catch (err) {
       console.error('Failed to stop project', err);
       alert('Failed to stop project');
@@ -141,16 +116,11 @@ function ProjectDetail({ token, onLogout }) {
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case 'completed':
-        return 'default';
-      case 'processing':
-        return 'secondary';
-      case 'failed':
-        return 'destructive';
-      case 'queued':
-        return 'outline';
-      default:
-        return 'outline';
+      case 'completed': return 'default';
+      case 'processing': return 'secondary';
+      case 'failed': return 'destructive';
+      case 'queued': return 'outline';
+      default: return 'outline';
     }
   };
 
@@ -165,84 +135,80 @@ function ProjectDetail({ token, onLogout }) {
     });
   };
 
-  const makeLinksClickable = (text) => {
-    if (!text) return text;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.split(urlRegex).map((part, i) => {
-      if (part.match(urlRegex)) {
-        return (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline break-all"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {part}
-          </a>
-        );
-      }
-      return part;
-    });
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-lg text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+          <div className="container flex h-14 items-center">
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </header>
+        <main className="container py-6">
+          <Card className="mb-6">
+            <CardHeader>
+              <Skeleton className="h-6 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="aspect-[9/19.5] rounded-3xl" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center">
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-destructive">{error || 'Project not found'}</div>
-          </CardContent>
-        </Card>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error || 'Project not found'}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between max-w-7xl">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold">Project Details</h1>
-          </div>
-          <Button variant="ghost" onClick={onLogout}>
-            Logout
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
+        <div className="container flex h-14 items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
           </Button>
+          <div className="flex flex-1 items-center justify-between">
+            <h1 className="text-lg font-semibold">Project Details</h1>
+            <Button variant="ghost" size="sm" onClick={onLogout}>
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <main className="container py-6">
         {/* Project Info */}
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <CardTitle className="break-all mb-2">
-                  {makeLinksClickable(project.url)}
-                </CardTitle>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="mb-2 break-all">{project.url}</CardTitle>
                 <CardDescription>
                   Created {formatDate(project.created_at)}
                   {project.completed_at && ` • Completed ${formatDate(project.completed_at)}`}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 self-start">
+              <div className="flex items-center gap-2">
                 {(project.status === 'queued' || project.status === 'processing') && (
-                  <Button 
-                    variant="destructive" 
-                    size="sm" 
+                  <Button
+                    variant="destructive"
+                    size="sm"
                     onClick={handleStopProject}
                     disabled={stopping}
                   >
@@ -255,88 +221,87 @@ function ProjectDetail({ token, onLogout }) {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            {/* Public Sharing Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+          <CardContent className="space-y-4">
+            {/* Public Sharing */}
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Globe className="h-5 w-5 text-muted-foreground" />
-                <div className="flex-1">
-                  <label htmlFor="public-toggle" className="text-sm font-medium cursor-pointer">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <Label htmlFor="public-toggle" className="cursor-pointer font-medium">
                     Share publicly
-                  </label>
+                  </Label>
                   <p className="text-xs text-muted-foreground">
                     Anyone with the link can view
                   </p>
                 </div>
-                <Switch
-                  id="public-toggle"
-                  checked={project.is_public}
-                  onCheckedChange={handleTogglePublic}
-                />
               </div>
-              {project.is_public && (
+              <Switch
+                id="public-toggle"
+                checked={project.is_public}
+                onCheckedChange={handleTogglePublic}
+              />
+            </div>
+
+            {project.is_public && (
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCopyLink}
-                  className="sm:ml-auto"
+                  className="flex-1"
                 >
                   {copied ? (
                     <>
-                      <Check className="h-4 w-4 mr-2" />
+                      <Check className="mr-2 h-4 w-4" />
                       Copied!
                     </>
                   ) : (
                     <>
-                      <Copy className="h-4 w-4 mr-2" />
+                      <Copy className="mr-2 h-4 w-4" />
                       Copy link
                     </>
                   )}
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
+
+            <Separator />
 
             {project.error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-4 rounded-md">
-                <strong>Error:</strong> {project.error}
-              </div>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{project.error}</AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
 
-        {/* Screenshots Section */}
+        {/* Screenshots */}
         {project.screenshots && project.screenshots.length > 0 ? (
           <div>
-            <h2 className="text-xl font-semibold mb-4">
+            <h2 className="mb-4 text-lg font-semibold">
               Screenshots ({project.screenshots.length})
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {project.screenshots.map((screenshot, index) => {
-                const htmlPath = screenshot.html_path;
                 const imageUrl = getScreenshotImage(screenshot.screenshot_path);
-
                 return (
-                  <div key={screenshot.id} className="group relative">
-                    {/* iPhone-style screenshot card */}
+                  <div key={screenshot.id} className="group">
                     <div
-                      className="relative cursor-pointer overflow-hidden rounded-[1.5rem] shadow-lg hover:shadow-xl transition-all duration-300"
-                      style={{ aspectRatio: '9/19.5' }}
-                      onClick={() => openLightbox(index)}
+                      className="relative aspect-[9/19.5] cursor-pointer overflow-hidden rounded-3xl shadow-md transition-shadow hover:shadow-xl"
+                      onClick={() => setLightboxIndex(index)}
                     >
                       <img
                         src={imageUrl}
                         alt={`Step ${screenshot.step_number}`}
-                        className="w-full h-full object-cover object-top"
+                        className="h-full w-full object-cover object-top"
                       />
-                      
-                      {/* Gradient overlay with buttons - show on hover */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-12 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                        <div className="flex flex-wrap gap-2 justify-center">
-                          {/* Copy Image */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-12 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex flex-wrap justify-center gap-2">
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="h-7 text-xs bg-white/90 hover:bg-white px-2"
+                            className="h-7 bg-white/90 px-2 text-xs hover:bg-white"
                             onClick={async (e) => {
                               e.stopPropagation();
                               try {
@@ -350,46 +315,43 @@ function ProjectDetail({ token, onLogout }) {
                               }
                             }}
                           >
-                            <Copy className="h-3 w-3 mr-1" />
+                            <Copy className="mr-1 h-3 w-3" />
                             PNG
                           </Button>
-
-                          {/* Copy MD */}
                           {screenshot.markdown_content && (
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="h-7 text-xs bg-white/90 hover:bg-white px-2"
+                              className="h-7 bg-white/90 px-2 text-xs hover:bg-white"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(screenshot.markdown_content);
                               }}
                             >
-                              <FileText className="h-3 w-3 mr-1" />
+                              <FileText className="mr-1 h-3 w-3" />
                               MD
                             </Button>
                           )}
-
-                          {/* Open HTML */}
-                          {htmlPath && (
+                          {screenshot.html_path && (
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="h-7 text-xs bg-white/90 hover:bg-white px-2"
+                              className="h-7 bg-white/90 px-2 text-xs hover:bg-white"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.open(`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${htmlPath}`, '_blank');
+                                window.open(
+                                  `${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${screenshot.html_path}`,
+                                  '_blank'
+                                );
                               }}
                             >
-                              <FileCode className="h-3 w-3 mr-1" />
+                              <FileCode className="mr-1 h-3 w-3" />
                               HTML
                             </Button>
                           )}
                         </div>
                       </div>
                     </div>
-
-                    {/* Step badge */}
                     <div className="mt-3 text-center">
                       <Badge variant="outline" className="text-xs">
                         Step {screenshot.step_number}
@@ -402,17 +364,18 @@ function ProjectDetail({ token, onLogout }) {
           </div>
         ) : (
           <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                {project.status === 'processing' ? 'Screenshots are being generated...' : 'No screenshots available'}
+            <CardContent className="flex min-h-[200px] items-center justify-center">
+              <p className="text-sm text-muted-foreground">
+                {project.status === 'processing'
+                  ? 'Screenshots are being generated...'
+                  : 'No screenshots available'}
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Processing Message */}
         {project.status === 'processing' && (
-          <Card className="mt-8 border-slate-200 bg-slate-50">
+          <Card className="mt-6 bg-muted/50">
             <CardContent className="py-4 text-center">
               <p className="font-medium">
                 🔄 Scraping in progress... This page will update automatically.
@@ -422,22 +385,16 @@ function ProjectDetail({ token, onLogout }) {
         )}
       </main>
 
-      {/* Lightbox Modal */}
+      {/* Lightbox */}
       {lightboxIndex !== null && project.screenshots && (
-        <div
-          className="fixed inset-0 bg-white z-50 flex flex-col"
-          onClick={closeLightbox}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b">
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="flex items-center justify-between border-b p-4">
             <div className="flex items-center gap-4">
               <h2 className="text-lg font-medium">
                 Step {project.screenshots[lightboxIndex].step_number}
               </h2>
             </div>
-            
             <div className="flex items-center gap-2">
-              {/* Save button */}
               <Button
                 variant="outline"
                 size="sm"
@@ -451,15 +408,15 @@ function ProjectDetail({ token, onLogout }) {
               >
                 Save
               </Button>
-
-              {/* Copy button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={async (e) => {
                   e.stopPropagation();
                   try {
-                    const response = await fetch(getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path));
+                    const response = await fetch(
+                      getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path)
+                    );
                     const blob = await response.blob();
                     await navigator.clipboard.write([
                       new ClipboardItem({ [blob.type]: blob })
@@ -471,8 +428,6 @@ function ProjectDetail({ token, onLogout }) {
               >
                 Copy
               </Button>
-
-              {/* Copy MD button */}
               {project.screenshots[lightboxIndex].markdown_content && (
                 <Button
                   variant="outline"
@@ -482,49 +437,39 @@ function ProjectDetail({ token, onLogout }) {
                     navigator.clipboard.writeText(project.screenshots[lightboxIndex].markdown_content);
                   }}
                 >
-                  <FileText className="h-4 w-4 mr-1" />
+                  <FileText className="mr-1 h-4 w-4" />
                   MD
                 </Button>
               )}
-
-              {/* Open HTML button */}
               {project.screenshots[lightboxIndex].html_path && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    window.open(`${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${project.screenshots[lightboxIndex].html_path}`, '_blank');
+                    window.open(
+                      `${process.env.REACT_APP_API_URL || 'https://b.hugmediary.com'}/static/uploads/${project.screenshots[lightboxIndex].html_path}`,
+                      '_blank'
+                    );
                   }}
                 >
-                  <FileCode className="h-4 w-4 mr-1" />
+                  <FileCode className="mr-1 h-4 w-4" />
                   HTML
                 </Button>
               )}
-
-              {/* Close button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={closeLightbox}
-              >
+              <Button variant="ghost" size="icon" onClick={() => setLightboxIndex(null)}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          {/* Scrollable image container - fit to window */}
-          <div 
-            className="flex-1 overflow-y-auto flex items-center justify-center p-8 bg-slate-50 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Left arrow */}
+          <div className="relative flex flex-1 items-center justify-center overflow-y-auto bg-muted/30 p-8">
             {lightboxIndex > 0 && (
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white shadow-lg"
-                onClick={prevImage}
+                className="absolute left-4 top-1/2 -translate-y-1/2 shadow-lg"
+                onClick={() => setLightboxIndex(lightboxIndex - 1)}
               >
                 <ChevronLeft className="h-6 w-6" />
               </Button>
@@ -533,25 +478,23 @@ function ProjectDetail({ token, onLogout }) {
             <img
               src={getScreenshotImage(project.screenshots[lightboxIndex].screenshot_path)}
               alt={`Step ${project.screenshots[lightboxIndex].step_number}`}
-              className="max-h-full max-w-md w-full object-contain rounded-lg shadow-lg"
+              className="max-h-full w-full max-w-md rounded-lg object-contain shadow-lg"
             />
 
-            {/* Right arrow */}
             {lightboxIndex < project.screenshots.length - 1 && (
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white shadow-lg"
-                onClick={nextImage}
+                className="absolute right-4 top-1/2 -translate-y-1/2 shadow-lg"
+                onClick={() => setLightboxIndex(lightboxIndex + 1)}
               >
                 <ChevronRight className="h-6 w-6" />
               </Button>
             )}
           </div>
 
-          {/* Footer info */}
           {project.screenshots[lightboxIndex].url && (
-            <div className="p-4 border-t text-center bg-white">
+            <div className="border-t bg-background p-4 text-center">
               <div className="text-sm text-muted-foreground">
                 {project.screenshots[lightboxIndex].url}
               </div>

@@ -25,7 +25,20 @@
       "Bash(git push:*)",
       "Bash(npx shadcn@latest init:*)",
       "Bash(npm install:*)",
-      "Bash(claude mcp add:*)"
+      "Bash(claude mcp add:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(PYTHONPATH=/root/funnelsaver/scraper python3 src/main.py https://www.alomoves.com/surveys/onboarding)",
+      "Bash(export:*)",
+      "Bash(/root/funnelsaver/backend/venv/bin/python3 src/main.py https://www.alomoves.com/surveys/onboarding)",
+      "Bash(PYTHONPATH=/root/funnelsaver/scraper /root/funnelsaver/backend/venv/bin/python3 scraper/src/main.py https://www.alomoves.com/surveys/onboarding)",
+      "Bash(/root/funnelsaver/backend/venv/bin/python3:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker restart:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm run dev:*)",
+      "Bash(PORT=3001 npm start)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []
