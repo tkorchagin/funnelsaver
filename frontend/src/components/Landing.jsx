@@ -251,7 +251,7 @@ function Landing() {
                 </li>
               </ul>
               <Button className="w-full rounded-lg" asChild>
-                <a href="https://t.me/tkorchain" target="_blank" rel="noopener noreferrer">
+                <a href="https://t.me/tkorchagin" target="_blank" rel="noopener noreferrer">
                   Buy Credits
                 </a>
               </Button>
@@ -281,7 +281,7 @@ function Landing() {
                 </li>
               </ul>
               <Button variant="outline" className="w-full rounded-lg" asChild>
-                <a href="https://t.me/tkorchain" target="_blank" rel="noopener noreferrer">
+                <a href="https://t.me/tkorchagin" target="_blank" rel="noopener noreferrer">
                   Buy Credits
                 </a>
               </Button>

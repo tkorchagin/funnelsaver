@@ -41,9 +41,8 @@ function DashboardNew({ onLogout, token }) {
     } catch (err) {
       console.error('Failed to load user info', err);
       // Redirect to login if user is not authenticated
-      if (err.response?.status === 401 || err.response?.status === 404) {
-        navigate('/login');
-      }
+      localStorage.removeItem('token');
+      navigate('/login');
     }
   };
 
@@ -54,9 +53,8 @@ function DashboardNew({ onLogout, token }) {
     } catch (err) {
       console.error('Failed to load projects', err);
       // Redirect to login if user is not authenticated
-      if (err.response?.status === 401 || err.response?.status === 404) {
-        navigate('/login');
-      }
+      localStorage.removeItem('token');
+      navigate('/login');
     }
   };
 
@@ -119,7 +117,7 @@ function DashboardNew({ onLogout, token }) {
           {/* Credits Pill */}
           {!isAdmin && (
             <a
-              href="https://t.me/tkorchain"
+              href="https://t.me/tkorchagin"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 bg-muted border border-border px-3 py-2 rounded-full text-sm font-medium text-muted-foreground hover:border-muted-foreground/50 transition-colors cursor-pointer no-underline"

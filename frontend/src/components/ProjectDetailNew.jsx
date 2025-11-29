@@ -120,9 +120,8 @@ function ProjectDetailNew({ token, onLogout }) {
     } catch (err) {
       console.error('Failed to load user info', err);
       // Redirect to login if user is not authenticated
-      if (err.response?.status === 401 || err.response?.status === 404) {
-        navigate('/login');
-      }
+      localStorage.removeItem('token');
+      navigate('/login');
     }
   };
 
@@ -133,9 +132,8 @@ function ProjectDetailNew({ token, onLogout }) {
     } catch (err) {
       setError('Failed to load project');
       // Redirect to login if user is not authenticated
-      if (err.response?.status === 401 || err.response?.status === 404) {
-        navigate('/login');
-      }
+      localStorage.removeItem('token');
+      navigate('/login');
     } finally {
       setLoading(false);
     }

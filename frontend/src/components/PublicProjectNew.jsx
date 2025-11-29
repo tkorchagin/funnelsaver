@@ -193,7 +193,7 @@ function PublicProjectNew() {
 
             <div className="flex items-center gap-4">
               <a
-                href="https://t.me/tkorchain"
+                href="https://t.me/tkorchagin"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -258,7 +258,7 @@ function PublicProjectNew() {
               <p className="text-sm text-muted-foreground flex-1">
                 Upgrade for full access to all funnels —{' '}
                 <a
-                  href="https://t.me/tkorchain"
+                  href="https://t.me/tkorchagin"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground underline underline-offset-4 hover:no-underline"
