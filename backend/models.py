@@ -21,11 +21,16 @@ class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     url = db.Column(db.String(500), nullable=False)
-    status = db.Column(db.String(20), default='queued')  # queued, processing, completed, failed
+    status = db.Column(db.String(20), default='queued')  # queued, processing, completed, failed, cancelled
     is_public = db.Column(db.Boolean, default=False)  # Public sharing
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.Text, nullable=True)
+
+    # Metadata fields
+    title = db.Column(db.String(500), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    favicon_path = db.Column(db.String(500), nullable=True)
 
     screenshots = db.relationship('Screenshot', backref='project', lazy=True, cascade='all, delete-orphan')
     files = db.relationship('File', backref='project', lazy=True, cascade='all, delete-orphan')

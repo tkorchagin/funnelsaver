@@ -42,5 +42,6 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "default"
 }

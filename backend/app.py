@@ -114,7 +114,10 @@ def get_projects():
         'error': p.error,
         'user_id': p.user_id,
         'username': p.user.username if user and user.is_admin else None,
-        'screenshot_count': len(p.screenshots)
+        'screenshot_count': len(p.screenshots),
+        'title': p.title,
+        'description': p.description,
+        'favicon_path': p.favicon_path
     } for p in projects]), 200
 
 
@@ -186,6 +189,9 @@ def get_project(project_id):
         'created_at': project.created_at.isoformat(),
         'completed_at': project.completed_at.isoformat() if project.completed_at else None,
         'error': project.error,
+        'title': project.title,
+        'description': project.description,
+        'favicon_path': project.favicon_path,
         'screenshots': [{
             'id': s.id,
             'step_number': s.step_number,
@@ -370,17 +376,17 @@ def cancel_project(project_id):
     
     if task_id:
         celery_app.control.revoke(task_id, terminate=True)
-        
-    # Update project status
-    project.status = 'failed'
+
+    # Update project status to cancelled (not failed)
+    project.status = 'cancelled'
     project.error = 'Cancelled by user'
     project.completed_at = datetime.utcnow()
     db.session.commit()
-    
+
     # Send status update event
     from tasks import send_progress_event
     send_progress_event(project_id, 'status_changed', {
-        'status': 'failed',
+        'status': 'cancelled',
         'error': 'Cancelled by user'
     })
 
@@ -407,6 +413,9 @@ def get_public_project(project_id):
         'error': project.error,
         'is_public': project.is_public,
         'owner_username': project.user.username if project.user else None,
+        'title': project.title,
+        'description': project.description,
+        'favicon_path': project.favicon_path,
         'screenshots': [{
             'id': s.id,
             'step_number': s.step_number,

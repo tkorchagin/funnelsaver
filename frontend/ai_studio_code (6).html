@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FunnelSaver - Capture Mobile User Flows</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* --- VARIABLES --- */
+        :root {
+            --background: #141414;
+            --surface: #1f1f1f;
+            --surface-highlight: #272727;
+            --border: #262626;
+            --foreground: #ffffff;
+            --text-secondary: #707070;
+            --primary: #ffffff;
+            --primary-text: #000000;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --radius-xl: 24px;
+            --radius-lg: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--background);
+            color: var(--foreground);
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        a { text-decoration: none; color: inherit; }
+        ul { list-style: none; }
+
+        /* --- UTILS --- */
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+        .text-gradient {
+            background: linear-gradient(to right, #fff, #999);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 4px 12px; border-radius: 99px;
+            font-size: 0.85rem; color: #ccc; margin-bottom: 1.5rem;
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            position: fixed; top: 0; width: 100%; z-index: 50;
+            background: rgba(20,20,20,0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner {
+            height: 70px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .nav-links { display: flex; gap: 2rem; color: var(--text-secondary); font-size: 0.95rem; }
+        .nav-links a:hover { color: var(--foreground); }
+        .nav-cta {
+            background: var(--primary); color: var(--primary-text);
+            padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .nav-cta:hover { opacity: 0.9; }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            padding-top: 160px; padding-bottom: 80px;
+            text-align: center; position: relative;
+        }
+        /* Glow effect behind hero */
+        .hero::before {
+            content: ''; position: absolute; top: 100px; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 400px;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(20,20,20,0) 70%);
+            z-index: -1; pointer-events: none;
+        }
+
+        .hero h1 {
+            font-size: 4rem; font-weight: 700; letter-spacing: -2px;
+            line-height: 1.1; margin-bottom: 1.5rem;
+        }
+        .hero p {
+            font-size: 1.25rem; color: var(--text-secondary);
+            max-width: 600px; margin: 0 auto 3rem auto;
+        }
+
+        /* Interactive Input Mock */
+        .hero-input-wrap {
+            max-width: 500px; margin: 0 auto 4rem auto;
+            position: relative;
+        }
+        .hero-input {
+            width: 100%; background: var(--surface); border: 1px solid var(--border);
+            padding: 1rem 1rem 1rem 3rem; border-radius: 12px;
+            color: white; font-size: 1rem; outline: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: border-color 0.2s;
+        }
+        .hero-input:focus { border-color: #555; }
+        .hero-input-icon {
+            position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+            color: var(--text-secondary);
+        }
+        .hero-input-btn {
+            position: absolute; right: 6px; top: 6px; bottom: 6px;
+            background: var(--primary); color: black; border: none;
+            padding: 0 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;
+        }
+
+        /* Hero Image / Product Shot */
+        .hero-visual {
+            max-width: 1000px; margin: 0 auto;
+            border: 1px solid var(--border); border-radius: var(--radius-xl);
+            background: #000; overflow: hidden;
+            box-shadow: 0 20px 50px -10px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .hero-img { width: 100%; display: block; opacity: 0.9; }
+        
+        /* Overlay gradient on image bottom */
+        .hero-visual::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 150px;
+            background: linear-gradient(to top, var(--background), transparent);
+        }
+
+        /* --- FEATURES (BENTO GRID) --- */
+        .features { padding: 5rem 0; }
+        .section-header { text-align: center; margin-bottom: 4rem; }
+        .section-header h2 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -1px; }
+        .section-header p { color: var(--text-secondary); font-size: 1.1rem; }
+
+        .bento-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem; grid-auto-rows: 300px;
+        }
+
+        .bento-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: transform 0.2s;
+        }
+        .bento-card:hover { border-color: #404040; }
+
+        .card-span-2 { grid-column: span 2; }
+        
+        .bento-content h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .bento-content p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        .bento-visual {
+            flex: 1; margin-top: 1rem;
+            background: var(--surface-highlight); border-radius: var(--radius-lg);
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        /* --- HOW IT WORKS --- */
+        .steps { padding: 5rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .steps-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 3rem;
+        }
+        .step-item { position: relative; padding-left: 2rem; }
+        .step-num {
+            position: absolute; left: 0; top: 0;
+            font-size: 3rem; font-weight: 800; color: rgba(255,255,255,0.05);
+            line-height: 1;
+        }
+        .step-item h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .step-item p { color: var(--text-secondary); }
+
+        /* --- PRICING --- */
+        .pricing { padding: 6rem 0; }
+        .pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; max-width: 1000px; margin: 3rem auto 0;
+        }
+        .price-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-xl); padding: 2rem;
+            display: flex; flex-direction: column;
+        }
+        .price-card.featured {
+            background: linear-gradient(180deg, #222 0%, #1f1f1f 100%);
+            border-color: #555; transform: scale(1.05); z-index: 10;
+        }
+        .price-header { margin-bottom: 2rem; }
+        .price-name { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+        .price-amount { font-size: 2.5rem; font-weight: 700; margin: 0.5rem 0; }
+        .price-amount span { font-size: 1rem; color: var(--text-secondary); font-weight: 400; }
+        
+        .feature-list li {
+            display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+            color: #ddd; font-size: 0.9rem;
+        }
+        .check-icon { color: white; width: 16px; }
+
+        .btn-price {
+            margin-top: auto; width: 100%; padding: 1rem; border-radius: 8px;
+            font-weight: 600; text-align: center; cursor: pointer; border: none;
+        }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: white; }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); border-color: #fff; }
+        .btn-solid { background: white; color: black; }
+        .btn-solid:hover { opacity: 0.9; }
+
+        /* --- FOOTER --- */
+        .footer { padding: 4rem 0; color: var(--text-secondary); font-size: 0.9rem; text-align: center; }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .nav-links { display: none; }
+            .bento-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+            .card-span-2 { grid-column: auto; }
+            .steps-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .price-card.featured { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container nav-inner">
+            <a href="#" class="logo">
+                <i data-lucide="layers" width="20"></i> FunnelSaver
+            </a>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#">Showcase</a>
+            </div>
+            <div style="display:flex; gap:1rem; align-items:center;">
+                <a href="#" style="color:#aaa; font-size:0.9rem;">Login</a>
+                <a href="#" class="nav-cta">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container">
+            <div class="badge">
+                <span style="width:6px; height:6px; background:#22c55e; border-radius:50%;"></span>
+                v2.0 is now live
+            </div>
+            
+            <h1>Stop taking screenshots.<br>Save <span class="text-gradient">entire funnels</span> in seconds.</h1>
+            <p>Enter a URL and get a beautiful, scrollable gallery of the mobile user flow. Export to HTML, PNG, or Figma.</p>
+
+            <div class="hero-input-wrap">
+                <i data-lucide="link" width="16" class="hero-input-icon"></i>
+                <input type="text" class="hero-input" placeholder="https://betterme.world/..." />
+                <button class="hero-input-btn">Save Funnel</button>
+            </div>
+
+            <div class="hero-visual">
+                <!-- Abstract UI Representation of the Gallery -->
+                <svg width="1000" height="500" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+                    <rect width="100%" height="100%" fill="#141414"/>
+                    <!-- Sidebar Mock -->
+                    <rect width="200" height="100%" fill="#1f1f1f" x="0" y="0"/>
+                    <!-- Grid Mock -->
+                    <g transform="translate(240, 40)">
+                        <rect width="180" height="350" rx="16" fill="#1f1f1f" stroke="#333"/>
+                        <rect x="20" y="20" width="140" height="10" rx="4" fill="#333"/>
+                        <rect x="20" y="40" width="100" height="10" rx="4" fill="#333"/>
+                        <rect x="20" y="70" width="140" height="200" rx="8" fill="#2a2a2a"/>
+                        <rect x="20" y="290" width="140" height="40" rx="20" fill="#fff"/>
+                    </g>
+                    <g transform="translate(450, 40)">
+                        <rect width="180" height="350" rx="16" fill="#1f1f1f" stroke="#333"/>
+                        <rect x="20" y="20" width="140" height="10" rx="4" fill="#333"/>
+                        <rect x="20" y="70" width="140" height="200" rx="8" fill="#2a2a2a"/>
+                         <rect x="20" y="290" width="140" height="40" rx="20" fill="#333"/>
+                    </g>
+                    <g transform="translate(660, 40)">
+                        <rect width="180" height="350" rx="16" fill="#1f1f1f" stroke="#333"/>
+                         <rect x="20" y="70" width="140" height="200" rx="8" fill="#2a2a2a"/>
+                    </g>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>Built for obsessive designers</h2>
+                <p>Don't let inspiration get lost in your camera roll.</p>
+            </div>
+
+            <div class="bento-grid">
+                <div class="bento-card card-span-2">
+                    <div class="bento-content">
+                        <h3>Full Page Capture</h3>
+                        <p>We scroll the page for you. Captures sticky headers, long copy, and every pixel of the footer.</p>
+                    </div>
+                    <div class="bento-visual" style="display:flex; align-items:center; justify-content:center;">
+                        <!-- Visual Mock -->
+                        <div style="width:80%; height:12px; background:#333; border-radius:99px;"></div>
+                        <div style="width:60%; height:12px; background:#333; border-radius:99px; margin-top:8px;"></div>
+                    </div>
+                </div>
+                <div class="bento-card">
+                    <div class="bento-content">
+                        <h3>Mobile First</h3>
+                        <p>Emulates iPhone viewport to capture the real mobile experience.</p>
+                    </div>
+                    <div class="bento-visual" style="display:flex; justify-content:center; align-items:flex-end; padding-bottom:0;">
+                         <div style="width:100px; height:150px; border-top-left-radius:16px; border-top-right-radius:16px; border:2px solid #333; border-bottom:0;"></div>
+                    </div>
+                </div>
+                <div class="bento-card">
+                    <div class="bento-content">
+                        <h3>One-click Export</h3>
+                        <p>Download funnels as high-res PNGs or raw HTML.</p>
+                    </div>
+                    <div class="bento-visual" style="display:flex; align-items:center; justify-content:center; color:#555;">
+                        <i data-lucide="download-cloud" width="48"></i>
+                    </div>
+                </div>
+                <div class="bento-card card-span-2">
+                    <div class="bento-content">
+                        <h3>Organized Projects</h3>
+                        <p>Keep your swipes organized by industry, style, or competitor.</p>
+                    </div>
+                    <div class="bento-visual" style="padding:1rem;">
+                        <div style="display:flex; gap:10px;">
+                            <div style="width:100px; height:80px; background:#333; border-radius:8px;"></div>
+                            <div style="width:100px; height:80px; background:#333; border-radius:8px;"></div>
+                            <div style="width:100px; height:80px; background:#333; border-radius:8px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- STEPS -->
+    <section class="steps">
+        <div class="container">
+            <div class="steps-grid">
+                <div class="step-item">
+                    <span class="step-num">1</span>
+                    <h3>Paste URL</h3>
+                    <p>Copy the link of any landing page or web app you want to save.</p>
+                </div>
+                <div class="step-item">
+                    <span class="step-num">2</span>
+                    <h3>We Scrape</h3>
+                    <p>Our bots navigate the page, screenshotting every step of the viewport.</p>
+                </div>
+                <div class="step-item">
+                    <span class="step-num">3</span>
+                    <h3>You Keep</h3>
+                    <p>It's added to your library forever. Even if the original site goes down.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="pricing" id="pricing">
+        <div class="container">
+            <div class="section-header">
+                <h2>Simple pricing</h2>
+                <p>Pay as you go. No monthly subscriptions.</p>
+            </div>
+            
+            <div class="pricing-grid">
+                <!-- Free -->
+                <div class="price-card">
+                    <div class="price-header">
+                        <div class="price-name">Starter</div>
+                        <div class="price-amount">$0</div>
+                        <p style="color:#777; font-size:0.9rem;">Perfect for testing.</p>
+                    </div>
+                    <ul class="feature-list">
+                        <li><i data-lucide="check" class="check-icon"></i> 3 Funnels / month</li>
+                        <li><i data-lucide="check" class="check-icon"></i> Standard Quality</li>
+                        <li><i data-lucide="check" class="check-icon"></i> Public links</li>
+                    </ul>
+                    <button class="btn-price btn-outline">Start Free</button>
+                </div>
+
+                <!-- Pro -->
+                <div class="price-card featured">
+                    <div class="price-header">
+                        <div class="price-name" style="color:white;">Credit Pack</div>
+                        <div class="price-amount">$29 <span>/ once</span></div>
+                        <p style="color:#aaa; font-size:0.9rem;">Best for designers.</p>
+                    </div>
+                    <ul class="feature-list">
+                        <li><i data-lucide="check" class="check-icon"></i> 50 Credits</li>
+                        <li><i data-lucide="check" class="check-icon"></i> High-Res Retina Capture</li>
+                        <li><i data-lucide="check" class="check-icon"></i> HTML Export</li>
+                        <li><i data-lucide="check" class="check-icon"></i> Private Projects</li>
+                    </ul>
+                    <button class="btn-price btn-solid">Buy Credits</button>
+                </div>
+
+                <!-- Agency -->
+                <div class="price-card">
+                    <div class="price-header">
+                        <div class="price-name">Agency</div>
+                        <div class="price-amount">$99 <span>/ once</span></div>
+                        <p style="color:#777; font-size:0.9rem;">Volume scraping.</p>
+                    </div>
+                    <ul class="feature-list">
+                        <li><i data-lucide="check" class="check-icon"></i> 250 Credits</li>
+                        <li><i data-lucide="check" class="check-icon"></i> All Pro features</li>
+                        <li><i data-lucide="check" class="check-icon"></i> Priority Support</li>
+                    </ul>
+                    <button class="btn-price btn-outline">Buy Credits</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 FunnelSaver. Built for creators.</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -60,8 +60,13 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         screenshot_path = await scraper.capture_screenshot(page, 0)
         html_path = await scraper.save_html(page, 0)
         markdown_content = await scraper.extract_markdown(page)
+
+        # Extract metadata (title, description, favicon) on first page load
+        metadata = await scraper.extract_metadata(page)
+        favicon_filename = await scraper.download_favicon(metadata.get('favicon_url'), None)
+
         reporter.record_step(0, page.url, screenshot_path, markdown_content, "Initial page load")
-        
+
         if on_step_completed:
             await on_step_completed({
                 'step': 0,
@@ -69,7 +74,9 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                 'screenshot_path': screenshot_path,
                 'html_path': html_path,
                 'markdown_content': markdown_content,
-                'action_desc': "Initial page load"
+                'action_desc': "Initial page load",
+                'metadata': metadata,
+                'favicon_filename': favicon_filename
             })
 
         visited_urls.add(page.url)

@@ -76,21 +76,32 @@ def scrape_funnel(self, project_id):
                     # Since we are in the same thread, we can use the app context
                     # but let's be safe and re-establish it if needed, though
                     # here we are just using the outer scope variables.
-                    
+
                     step_number = step_data['step']
                     screenshot_path_abs = step_data['screenshot_path']
                     html_path_abs = step_data['html_path']
-                    
+
                     # Convert absolute paths to relative paths for DB/Frontend
                     # The scraper writes to project_dir which is uploads/project_{id}
                     # We want paths like project_{id}/step_0.png
-                    
+
                     rel_screenshot_path = f"project_{project_id}/{os.path.basename(screenshot_path_abs)}"
                     rel_html_path = f"project_{project_id}/{os.path.basename(html_path_abs)}" if html_path_abs else None
-                    
+
                     # Markdown content is passed directly
                     markdown_content = step_data.get('markdown_content')
-                    
+
+                    # On step 0, save metadata and favicon
+                    if step_number == 0:
+                        metadata = step_data.get('metadata', {})
+                        favicon_filename = step_data.get('favicon_filename')
+
+                        # Update project with metadata
+                        project.title = metadata.get('title')
+                        project.description = metadata.get('description')
+                        if favicon_filename:
+                            project.favicon_path = f"project_{project_id}/{favicon_filename}"
+
                     # Create screenshot record
                     screenshot = Screenshot(
                         project_id=project_id,
@@ -102,17 +113,17 @@ def scrape_funnel(self, project_id):
                         markdown_content=markdown_content,
                         action_description=step_data.get('action_desc', f'Step {step_number}')
                     )
-                    
+
                     db.session.add(screenshot)
                     db.session.commit()
-                    
+
                     # Send screenshot added event
                     send_progress_event(project_id, 'screenshot_added', {
                         'step_number': step_number,
                         'screenshot_id': screenshot.id,
                         'screenshot_path': rel_screenshot_path
                     })
-                    
+
                 except Exception as e:
                     print(f"Error in on_step_completed: {e}")
 
