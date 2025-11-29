@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Layers } from 'lucide-react';
 
 function Login({ onLogin }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -42,10 +42,13 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight">FunnelSaver</h1>
+          <a href="/" className="inline-flex items-center gap-2 text-4xl font-bold tracking-tight text-foreground hover:opacity-80 transition-opacity no-underline">
+            <Layers className="h-8 w-8" />
+            FunnelSaver
+          </a>
           <p className="mt-2 text-sm text-muted-foreground">
             Web-to-App Funnel Parser
           </p>
