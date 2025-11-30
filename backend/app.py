@@ -397,7 +397,7 @@ def cancel_project(project_id):
 @jwt_required()
 def delete_project(project_id):
     """Delete a project and all its data"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     project = Project.query.get(project_id)
