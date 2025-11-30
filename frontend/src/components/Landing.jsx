@@ -25,7 +25,7 @@ function Landing() {
               FunnelSaver
             </a>
 
-            <div className="hidden md:flex gap-8 text-sm text-muted-foreground">
+            <div className="hidden md:flex gap-8 text-sm text-muted-foreground absolute left-1/2 -translate-x-1/2">
               <a href="#features" className="hover:text-foreground transition-colors">Features</a>
               <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
             </div>
