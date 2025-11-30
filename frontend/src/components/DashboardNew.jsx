@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects, createProject, getCurrentUser, getScreenshotImage } from '../api';
 import { ThemeToggle } from './ThemeToggle';
+import { updatePageMeta } from '../utils/seo';
 import {
   Layers,
   Plus,
@@ -23,6 +24,15 @@ function DashboardNew({ onLogout, token }) {
   const [credits, setCredits] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
   const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    updatePageMeta({
+      title: 'My Projects - FunnelSaver',
+      description: 'Manage your mobile app funnel scraping projects. View progress, screenshots, and export data.',
+      url: window.location.href,
+      image: `${window.location.origin}/og-image.png`
+    });
+  }, []);
 
   useEffect(() => {
     loadProjects();
@@ -156,7 +166,7 @@ function DashboardNew({ onLogout, token }) {
         </div>
       </nav>
 
-      <div className="container mx-auto max-w-[1200px] px-8">
+      <div className="container mx-auto max-w-[1400px] px-8">
         {/* Hero Section */}
         <section className="py-12 border-b border-border">
           <h1 className="text-2xl font-semibold mb-2">Create New Funnel</h1>

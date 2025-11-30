@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { login, register } from '../api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle, Layers } from 'lucide-react';
+import { updatePageMeta } from '../utils/seo';
 
 function Login({ onLogin }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -13,6 +14,17 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    updatePageMeta({
+      title: isRegister ? 'Sign Up - FunnelSaver' : 'Login - FunnelSaver',
+      description: isRegister
+        ? 'Create your FunnelSaver account to start parsing mobile app funnels automatically.'
+        : 'Sign in to your FunnelSaver account to manage your funnel scraping projects.',
+      url: window.location.href,
+      image: `${window.location.origin}/og-image.png`
+    });
+  }, [isRegister]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

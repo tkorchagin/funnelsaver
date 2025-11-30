@@ -72,6 +72,10 @@ export const cancelProject = (projectId) => {
   return api.post(`/projects/${projectId}/cancel`);
 };
 
+export const deleteProject = (projectId) => {
+  return api.delete(`/projects/${projectId}`);
+};
+
 export const getPublicProject = (id) => {
   return axios.get(`${API_URL}/api/public/projects/${id}`);
 };

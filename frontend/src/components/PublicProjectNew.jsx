@@ -8,6 +8,7 @@ import { Skeleton } from './ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ScrollArea } from './ui/scroll-area';
 import { ThemeToggle } from './ThemeToggle';
+import { updatePageMeta } from '../utils/seo';
 import {
   X,
   ChevronLeft,
@@ -32,6 +33,22 @@ function PublicProjectNew() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    if (project) {
+      const firstScreenshot = project.screenshots?.[0];
+      const projectTitle = firstScreenshot?.metadata?.title || new URL(project.url).hostname;
+      const projectDescription = firstScreenshot?.metadata?.description || `Mobile app funnel for ${new URL(project.url).hostname}`;
+      const projectImage = firstScreenshot ? getScreenshotImage(firstScreenshot.screenshot_path) : `${window.location.origin}/og-image.png`;
+
+      updatePageMeta({
+        title: `${projectTitle} - Shared Funnel`,
+        description: projectDescription,
+        url: window.location.href,
+        image: projectImage
+      });
+    }
+  }, [project]);
 
   useEffect(() => {
     loadProject();

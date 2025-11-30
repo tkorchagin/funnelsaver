@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProject, getScreenshotImage, togglePublic, cancelProject, getCurrentUser } from '../api';
+import { getProject, getScreenshotImage, togglePublic, cancelProject, deleteProject, getCurrentUser } from '../api';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -9,6 +9,7 @@ import { Label } from './ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { ScrollArea } from './ui/scroll-area';
 import { ThemeToggle } from './ThemeToggle';
+import { updatePageMeta } from '../utils/seo';
 import {
   X,
   ChevronLeft,
@@ -23,7 +24,8 @@ import {
   ArrowLeft,
   Globe,
   Check,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 
 function ProjectDetailNew({ token, onLogout }) {
@@ -36,7 +38,24 @@ function ProjectDetailNew({ token, onLogout }) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    if (project) {
+      const firstScreenshot = project.screenshots?.[0];
+      const projectTitle = firstScreenshot?.metadata?.title || new URL(project.url).hostname;
+      const projectDescription = firstScreenshot?.metadata?.description || `Mobile app funnel for ${new URL(project.url).hostname}`;
+      const projectImage = firstScreenshot ? getScreenshotImage(firstScreenshot.screenshot_path) : `${window.location.origin}/og-image.png`;
+
+      updatePageMeta({
+        title: `${projectTitle} - FunnelSaver`,
+        description: projectDescription,
+        url: window.location.href,
+        image: projectImage
+      });
+    }
+  }, [project]);
 
   useEffect(() => {
     loadProject();
@@ -162,6 +181,19 @@ function ProjectDetailNew({ token, onLogout }) {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await deleteProject(id);
+      navigate('/projects');
+    } catch (err) {
+      console.error('Failed to delete project', err);
+      alert(err.response?.data?.error || 'Failed to delete project');
+      setDeleting(false);
+    }
+  };
+
   const handleCopyLink = () => {
     const publicUrl = `${window.location.origin}/public/${id}`;
     navigator.clipboard.writeText(publicUrl);
@@ -251,16 +283,23 @@ function ProjectDetailNew({ token, onLogout }) {
         {/* Sticky Navbar */}
         <nav className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-md">
           <div className="container mx-auto h-[60px] flex items-center justify-between max-w-[1400px] px-8">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => navigate('/projects')}
-                className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer"
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 text-foreground hover:opacity-80 transition-opacity bg-transparent border-none cursor-pointer"
               >
-                <ArrowLeft className="h-5 w-5" />
-                <span className="text-sm font-medium">Back</span>
+                <Layers className="h-5 w-5" />
+                <span className="text-base font-bold">FunnelSaver</span>
               </button>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium text-foreground">{projectName}</span>
+              <button
+                onClick={() => navigate('/projects')}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors bg-transparent border-none cursor-pointer"
+              >
+                Projects
+              </button>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground truncate max-w-[300px]">{projectName}</span>
             </div>
 
             <div className="flex items-center gap-4">
@@ -316,6 +355,14 @@ function ProjectDetailNew({ token, onLogout }) {
                     {stopping ? 'Stopping...' : 'Stop'}
                   </button>
                 )}
+                <button
+                  onClick={handleDeleteProject}
+                  disabled={deleting}
+                  className="flex items-center gap-2 bg-transparent text-destructive border border-destructive px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
               </div>
             </div>
 

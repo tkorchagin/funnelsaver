@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ThemeToggle } from './ThemeToggle';
+import { updatePageMeta } from '../utils/seo';
 import {
   Layers,
   Link as LinkIcon,
@@ -13,6 +14,15 @@ import {
 
 function Landing() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    updatePageMeta({
+      title: 'FunnelSaver - Web-to-App Funnel Parser',
+      description: 'Automatically scrape and document mobile app funnels from web URLs. Convert websites into interactive mobile app screenshots with metadata extraction.',
+      url: window.location.href,
+      image: `${window.location.origin}/og-image.png`
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

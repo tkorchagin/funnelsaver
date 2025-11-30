@@ -393,6 +393,79 @@ def cancel_project(project_id):
     return jsonify({'message': 'Project cancelled'}), 200
 
 
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+@jwt_required()
+def delete_project(project_id):
+    """Delete a project and all its data"""
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+
+    project = Project.query.get(project_id)
+
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    # Check ownership (only owner or admin can delete)
+    if project.user_id != user_id and not user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    # Cancel the task if it's running
+    if project.status in ['queued', 'processing']:
+        from celery_config import celery_app
+        task_id = None
+
+        # Find the task in Celery
+        inspect = celery_app.control.inspect()
+        active_tasks = inspect.active()
+        reserved_tasks = inspect.reserved()
+
+        if active_tasks:
+            for worker, tasks in active_tasks.items():
+                for task in tasks:
+                    if task.get('args') and task['args'][0] == project_id:
+                        task_id = task['id']
+                        break
+                if task_id: break
+
+        if not task_id and reserved_tasks:
+            for worker, tasks in reserved_tasks.items():
+                for task in tasks:
+                    if task.get('args') and task['args'][0] == project_id:
+                        task_id = task['id']
+                        break
+                if task_id: break
+
+        if task_id:
+            celery_app.control.revoke(task_id, terminate=True)
+
+    # Delete associated files from filesystem
+    import os
+
+    # Delete screenshots
+    for screenshot in project.screenshots:
+        screenshot_path = os.path.join('uploads', screenshot.screenshot_path)
+        if os.path.exists(screenshot_path):
+            os.remove(screenshot_path)
+
+    # Delete exported files
+    for file in project.files:
+        file_path = os.path.join('uploads', file.file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    # Delete favicon
+    if project.favicon_path:
+        favicon_path = os.path.join('uploads', project.favicon_path)
+        if os.path.exists(favicon_path):
+            os.remove(favicon_path)
+
+    # Delete project from database (cascade will delete screenshots and files)
+    db.session.delete(project)
+    db.session.commit()
+
+    return jsonify({'message': 'Project deleted successfully'}), 200
+
+
 @app.route('/api/public/projects/<int:project_id>', methods=['GET'])
 def get_public_project(project_id):
     """Get public project without authentication"""
