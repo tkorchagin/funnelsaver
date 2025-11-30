@@ -28,7 +28,6 @@ function Landing() {
             <div className="hidden md:flex gap-8 text-sm text-muted-foreground">
               <a href="#features" className="hover:text-foreground transition-colors">Features</a>
               <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
-              <a href="/public/1" className="hover:text-foreground transition-colors">Showcase</a>
             </div>
 
             <div className="flex items-center gap-4">
@@ -73,8 +72,12 @@ function Landing() {
               type="text"
               placeholder="https://betterme.world/..."
               className="w-full bg-muted border border-border rounded-xl pl-12 pr-32 py-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+              readOnly
             />
-            <Button className="absolute right-1.5 top-1.5 bottom-1.5 rounded-lg">
+            <Button
+              className="absolute right-1.5 top-1.5 bottom-1.5 rounded-lg"
+              onClick={() => navigate('/login')}
+            >
               Save Funnel
             </Button>
           </div>

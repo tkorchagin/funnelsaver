@@ -38,7 +38,8 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(npm run dev:*)",
       "Bash(PORT=3001 npm start)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
