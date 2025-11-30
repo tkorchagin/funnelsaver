@@ -316,57 +316,44 @@ function ProjectDetailNew({ token, onLogout }) {
                     {stopping ? 'Stopping...' : 'Stop'}
                   </button>
                 )}
-                <Badge
-                  variant={
-                    project.status === 'completed' ? 'default' :
-                    project.status === 'processing' ? 'secondary' :
-                    project.status === 'failed' ? 'destructive' : 'outline'
-                  }
-                >
-                  {project.status}
-                </Badge>
               </div>
             </div>
 
             {/* Public Sharing */}
-            <div className="bg-muted/50 rounded-lg p-5 mb-6 max-w-[800px]">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor="public-toggle" className="cursor-pointer font-medium">
-                      Share publicly
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Anyone with the link can view
-                    </p>
+            <div className="bg-muted rounded-lg p-4 mb-6 max-w-[800px]">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    {project.is_public ? (
+                      <input
+                        type="text"
+                        value={`${window.location.origin}/public/${id}`}
+                        readOnly
+                        className="w-full bg-background border border-border rounded-md px-3 py-1.5 text-sm font-mono"
+                      />
+                    ) : (
+                      <span className="text-sm font-medium">Share publicly — Anyone with the link can view</span>
+                    )}
                   </div>
                 </div>
-                <Switch
-                  id="public-toggle"
-                  checked={project.is_public}
-                  onCheckedChange={handleTogglePublic}
-                />
-              </div>
-
-              {project.is_public && (
-                <button
-                  onClick={handleCopyLink}
-                  className="w-full bg-background border border-border px-4 py-2 rounded-lg font-medium cursor-pointer transition-colors hover:bg-muted flex items-center justify-center gap-2"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="h-4 w-4" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4" />
-                      Copy public link
-                    </>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {project.is_public && (
+                    <button
+                      onClick={handleCopyLink}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border hover:bg-muted-foreground/10 transition-colors cursor-pointer bg-background text-foreground text-sm"
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
                   )}
-                </button>
-              )}
+                  <Switch
+                    id="public-toggle"
+                    checked={project.is_public}
+                    onCheckedChange={handleTogglePublic}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Visit Button */}

@@ -61,6 +61,15 @@ function DashboardNew({ onLogout, token }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch (err) {
+      setError('Please enter a valid URL (e.g., https://example.com)');
+      return;
+    }
+
     setLoading(true);
 
     try {
