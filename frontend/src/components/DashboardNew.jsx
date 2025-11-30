@@ -91,7 +91,9 @@ function DashboardNew({ onLogout, token }) {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Ensure the timestamp is treated as UTC by adding 'Z' if not present
+    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+    const date = new Date(utcString);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
