@@ -22,4 +22,23 @@ celery_app.conf.update(
     enable_utc=True,
     worker_concurrency=2,  # Maximum 2 parallel workers
     worker_prefetch_multiplier=1,  # Fetch one task at a time
+
+    # Broker connection settings for stability
+    broker_connection_retry_on_startup=True,
+    broker_connection_retry=True,
+    broker_connection_max_retries=10,
+    broker_pool_limit=10,
+
+    # Redis health check settings
+    broker_transport_options={
+        'visibility_timeout': 43200,  # 12 hours
+        'health_check_interval': 30,  # Check connection every 30 seconds
+    },
+
+    # Result backend settings
+    result_backend_transport_options={
+        'retry_policy': {
+            'timeout': 5.0
+        }
+    },
 )
