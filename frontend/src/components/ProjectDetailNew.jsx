@@ -238,6 +238,17 @@ function ProjectDetailNew({ token, onLogout }) {
 
   const handleCopyImage = async (imageUrl, e) => {
     e?.stopPropagation();
+
+    // Check if Clipboard API is available
+    if (!navigator.clipboard || !navigator.clipboard.write) {
+      toast({
+        title: "Not supported",
+        description: "Image copying is not supported in your browser. Try using Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -252,7 +263,7 @@ function ProjectDetailNew({ token, onLogout }) {
       console.error('Failed to copy image:', err);
       toast({
         title: "Error",
-        description: "Failed to copy image to clipboard",
+        description: err.message || "Failed to copy image to clipboard",
         variant: "destructive",
       });
     }

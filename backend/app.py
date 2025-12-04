@@ -178,10 +178,13 @@ def create_project():
 @jwt_required()
 def get_project(project_id):
     user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id).first()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
 
     # Admin can see any project, regular users only their own
-    if user and user.is_admin:
+    if user.is_admin:
         project = Project.query.filter_by(id=project_id).first()
     else:
         project = Project.query.filter_by(id=project_id, user_id=user_id).first()
@@ -409,15 +412,18 @@ def cancel_project(project_id):
 def delete_project(project_id):
     """Delete a project and all its data"""
     user_id = int(get_jwt_identity())
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id).first()
 
-    project = Project.query.get(project_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    project = Project.query.filter_by(id=project_id).first()
 
     if not project:
         return jsonify({'error': 'Project not found'}), 404
 
     # Check ownership (only owner or admin can delete)
-    if project.user_id != user_id and not user.is_admin:
+    if project.user_id != user_id and not (user.is_admin):
         return jsonify({'error': 'Unauthorized'}), 403
 
     # Cancel the task if it's running
