@@ -40,7 +40,10 @@
       "Bash(PORT=3001 npm start)",
       "Bash(find:*)",
       "Bash(npm run build:*)",
-      "Bash(sudo systemctl status:*)"
+      "Bash(sudo systemctl status:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker images:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

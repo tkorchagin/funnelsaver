@@ -151,10 +151,14 @@ function ProjectDetailNew({ token, onLogout }) {
       const response = await getProject(id);
       setProject(response.data);
     } catch (err) {
-      setError('Failed to load project');
-      // Redirect to login if user is not authenticated
-      localStorage.removeItem('token');
-      navigate('/login');
+      // Only redirect to login if unauthorized (401) or forbidden (403)
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem('token');
+        navigate('/login');
+      } else {
+        // For other errors (like 404), just show the error
+        setError(err.response?.data?.error || 'Failed to load project');
+      }
     } finally {
       setLoading(false);
     }
