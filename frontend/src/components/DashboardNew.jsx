@@ -345,7 +345,7 @@ function DashboardNew({ onLogout, token }) {
                         )}
                         {project.username && (
                           <div className="ml-auto mt-3 text-xs text-muted-foreground">
-                            @{project.username}
+                            {project.username}
                           </div>
                         )}
                         {isCompleted && (
