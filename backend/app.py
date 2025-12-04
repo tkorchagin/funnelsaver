@@ -283,7 +283,15 @@ def project_events(project_id):
     except:
         return jsonify({'error': 'Invalid token'}), 401
 
-    project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Admin can access any project, regular users only their own
+    if user.is_admin:
+        project = Project.query.filter_by(id=project_id).first()
+    else:
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
 
     if not project:
         return jsonify({'error': 'Project not found'}), 404
