@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getProjects, createProject, getCurrentUser, getScreenshotImage } from '../api';
 import { ThemeToggle } from './ThemeToggle';
 import { updatePageMeta } from '../utils/seo';
+import { useToast } from '../hooks/use-toast';
 import {
   Layers,
   Plus,
@@ -16,6 +17,7 @@ import {
 
 function DashboardNew({ onLogout, token }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [projects, setProjects] = useState([]);
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,7 @@ function DashboardNew({ onLogout, token }) {
   const [credits, setCredits] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
   const [username, setUsername] = useState('');
+  const [faviconErrors, setFaviconErrors] = useState({});
 
   useEffect(() => {
     updatePageMeta({
@@ -88,12 +91,22 @@ function DashboardNew({ onLogout, token }) {
         setCredits(response.data.credits_remaining);
       }
       loadProjects();
+      toast({
+        title: "Project created",
+        description: "Your funnel scraping has started",
+      });
       if (response.data.id) {
         navigate(`/projects/${response.data.id}`);
       }
     } catch (err) {
       const errorData = err.response?.data;
-      setError(errorData?.error || 'Failed to create project');
+      const errorMessage = errorData?.error || 'Failed to create project';
+      setError(errorMessage);
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -276,20 +289,14 @@ function DashboardNew({ onLogout, token }) {
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0 flex items-start gap-3">
                           {/* Favicon or First Letter */}
-                          {project.favicon_path ? (
+                          {project.favicon_path && !faviconErrors[project.id] ? (
                             <div className="w-10 h-10 rounded-lg overflow-hidden border border-border/20 flex-shrink-0">
                               <img
                                 src={getScreenshotImage(project.favicon_path)}
                                 alt={project.title || 'Favicon'}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // Replace broken image with letter fallback
-                                  e.target.style.display = 'none';
-                                  const fallback = document.createElement('div');
-                                  fallback.className = 'w-full h-full flex items-center justify-center';
-                                  fallback.style.backgroundColor = '#E6F8D3';
-                                  fallback.innerHTML = `<span class="text-lg font-bold text-black">${(project.title || new URL(project.url).hostname)[0].toUpperCase()}</span>`;
-                                  e.target.parentElement.appendChild(fallback);
+                                onError={() => {
+                                  setFaviconErrors(prev => ({ ...prev, [project.id]: true }));
                                 }}
                               />
                             </div>

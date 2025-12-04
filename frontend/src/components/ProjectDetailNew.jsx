@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 import { ScrollArea } from './ui/scroll-area';
 import { ThemeToggle } from './ThemeToggle';
 import { updatePageMeta } from '../utils/seo';
+import { useToast } from '../hooks/use-toast';
 import {
   X,
   ChevronLeft,
@@ -31,6 +32,7 @@ import {
 function ProjectDetailNew({ token, onLogout }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -162,8 +164,17 @@ function ProjectDetailNew({ token, onLogout }) {
     try {
       const response = await togglePublic(id);
       setProject({ ...project, is_public: response.data.is_public });
+      toast({
+        title: response.data.is_public ? "Project is now public" : "Project is now private",
+        description: response.data.is_public ? "Anyone with the link can view this project" : "Only you can view this project",
+      });
     } catch (err) {
       console.error('Failed to toggle public', err);
+      toast({
+        title: "Error",
+        description: "Failed to update project visibility",
+        variant: "destructive",
+      });
     }
   };
 
@@ -173,9 +184,17 @@ function ProjectDetailNew({ token, onLogout }) {
     try {
       await cancelProject(id);
       loadProject();
+      toast({
+        title: "Project cancelled",
+        description: "The project has been stopped successfully",
+      });
     } catch (err) {
       console.error('Failed to stop project', err);
-      alert('Failed to stop project');
+      toast({
+        title: "Error",
+        description: "Failed to cancel project",
+        variant: "destructive",
+      });
     } finally {
       setStopping(false);
     }
@@ -186,10 +205,18 @@ function ProjectDetailNew({ token, onLogout }) {
     setDeleting(true);
     try {
       await deleteProject(id);
-      navigate('/projects');
+      toast({
+        title: "Project deleted",
+        description: "The project has been deleted successfully",
+      });
+      setTimeout(() => navigate('/projects'), 1000);
     } catch (err) {
       console.error('Failed to delete project', err);
-      alert(err.response?.data?.error || 'Failed to delete project');
+      toast({
+        title: "Error",
+        description: err.response?.data?.error || 'Failed to delete project',
+        variant: "destructive",
+      });
       setDeleting(false);
     }
   };
@@ -199,6 +226,10 @@ function ProjectDetailNew({ token, onLogout }) {
     navigator.clipboard.writeText(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    toast({
+      title: "Link copied",
+      description: "Public link has been copied to clipboard",
+    });
   };
 
   const scrollToTop = () => {
@@ -213,8 +244,17 @@ function ProjectDetailNew({ token, onLogout }) {
       await navigator.clipboard.write([
         new ClipboardItem({ [blob.type]: blob })
       ]);
+      toast({
+        title: "Image copied",
+        description: "Screenshot has been copied to clipboard",
+      });
     } catch (err) {
       console.error('Failed to copy image:', err);
+      toast({
+        title: "Error",
+        description: "Failed to copy image to clipboard",
+        variant: "destructive",
+      });
     }
   };
 
@@ -229,8 +269,17 @@ function ProjectDetailNew({ token, onLogout }) {
       a.download = `screen-${step}.png`;
       a.click();
       window.URL.revokeObjectURL(url);
+      toast({
+        title: "Download started",
+        description: "Screenshot is being downloaded",
+      });
     } catch (err) {
       console.error('Failed to download image:', err);
+      toast({
+        title: "Error",
+        description: "Failed to download image",
+        variant: "destructive",
+      });
     }
   };
 
@@ -582,14 +631,18 @@ function ProjectDetailNew({ token, onLogout }) {
                           e.stopPropagation();
                           if (screenshots[lightboxIndex].markdown_content) {
                             navigator.clipboard.writeText(screenshots[lightboxIndex].markdown_content);
+                            toast({
+                              title: "Markdown copied",
+                              description: "Screenshot markdown has been copied to clipboard",
+                            });
                           }
                         }}
                       >
                         <FileText className="h-3.5 w-3.5" />
-                        MD
+                        Copy MD
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Export as Markdown</TooltipContent>
+                    <TooltipContent>Copy as Markdown</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
 
@@ -601,10 +654,10 @@ function ProjectDetailNew({ token, onLogout }) {
                         onClick={(e) => handleCopyImage(getScreenshotImage(screenshots[lightboxIndex].screenshot_path), e)}
                       >
                         <Copy className="h-3.5 w-3.5" />
-                        Copy
+                        Copy PNG
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>Copy image</TooltipContent>
+                    <TooltipContent>Copy image to clipboard</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
 
@@ -616,7 +669,7 @@ function ProjectDetailNew({ token, onLogout }) {
                         onClick={(e) => handleDownloadImage(getScreenshotImage(screenshots[lightboxIndex].screenshot_path), screenshots[lightboxIndex].step_number, e)}
                       >
                         <Download className="h-3.5 w-3.5" />
-                        Download
+                        Download PNG
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>Download image</TooltipContent>

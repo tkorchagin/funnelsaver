@@ -593,6 +593,16 @@ class Clicker:
                         text = await el.inner_text()
                         desc = f"Selected options and clicked '{text.strip()}'"
                         print(f"DEBUG: Clicking enabled submit button: '{text.strip()}'")
+
+                        # Scroll element into view first
+                        try:
+                            await el.scroll_into_view_if_needed(timeout=5000)
+                            await page.wait_for_timeout(500)
+                        except Exception as scroll_err:
+                            print(f"DEBUG: Scroll failed: {scroll_err}, trying JS scroll...")
+                            await el.evaluate("el => el.scrollIntoView({behavior: 'smooth', block: 'center'})")
+                            await page.wait_for_timeout(1000)
+
                         await el.click(timeout=10000)
                         await page.wait_for_timeout(1000)
                         return desc

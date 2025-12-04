@@ -9,6 +9,7 @@ import ProjectDetailNew from './components/ProjectDetailNew.jsx';
 import PublicProject from './components/PublicProject.jsx';
 import PublicProjectNew from './components/PublicProjectNew.jsx';
 import { ThemeProvider } from './components/ThemeProvider.jsx';
+import { Toaster } from './components/ui/toaster.jsx';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -33,6 +34,7 @@ function App() {
     <ThemeProvider defaultTheme="light">
       <Router>
         <div className="App">
+          <Toaster />
           <Routes>
             {/* Landing page - always public */}
             <Route
