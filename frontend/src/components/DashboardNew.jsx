@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   AlertOctagon,
   XCircle,
-  MoreHorizontal,
   Coins
 } from 'lucide-react';
 
@@ -305,12 +304,6 @@ function DashboardNew({ onLogout, token }) {
                             </p>
                           </div>
                         </div>
-                        <button
-                          className="bg-transparent border-none text-muted-foreground cursor-pointer p-1 hover:text-foreground flex-shrink-0"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4.5 w-4.5" />
-                        </button>
                       </div>
 
                       {isFailed && project.error && (
@@ -327,24 +320,29 @@ function DashboardNew({ onLogout, token }) {
                         </div>
                       )}
 
-                      <div className="flex gap-4 text-xs text-muted-foreground mt-auto pt-4">
-                        <div className="flex items-center gap-1">
+                      <div className="flex gap-4 text-xs text-muted-foreground mt-auto pt-4 border-t border-border/50">
+                        <div className="flex items-center gap-1 mt-3">
                           <Clock className="h-3.5 w-3.5" />
                           {formatDate(project.created_at)}
                         </div>
                         {isCompleted && (
-                          <>
-                            <div className="flex items-center gap-1">
-                              <Smartphone className="h-3.5 w-3.5" />
-                              {project.screenshot_count || 0} screens
-                            </div>
-                            <div className="flex items-center gap-1 ml-auto text-green-500">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                            </div>
-                          </>
+                          <div className="flex items-center gap-1 mt-3">
+                            <Smartphone className="h-3.5 w-3.5" />
+                            {project.screenshot_count || 0} screens
+                          </div>
                         )}
                         {isProcessing && (
-                          <div className="flex items-center gap-1">...</div>
+                          <div className="flex items-center gap-1 mt-3">...</div>
+                        )}
+                        {project.username && (
+                          <div className="ml-auto mt-3 text-xs text-muted-foreground">
+                            @{project.username}
+                          </div>
+                        )}
+                        {isCompleted && (
+                          <div className="flex items-center gap-1 ml-auto mt-3 text-green-500">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          </div>
                         )}
                       </div>
                     </div>
