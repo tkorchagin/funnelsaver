@@ -295,16 +295,18 @@ class Clicker:
         except Exception:
             pass
 
-        # Check all visible checkboxes that are not already checked
+        # Check random number of visible checkboxes (1-3) instead of all
         try:
             checkboxes = await page.query_selector_all('input[type="checkbox"]')
             print(f"DEBUG: Found {len(checkboxes)} checkboxes")
+
+            # Filter out non-visible and system checkboxes
+            valid_checkboxes = []
             for checkbox in checkboxes:
                 try:
-                    # Skip if not visible
                     if not await checkbox.is_visible():
                         continue
-                    
+
                     # Skip cookie consent and other system checkboxes
                     checkbox_id = await checkbox.get_attribute("id") or ""
                     checkbox_class = await checkbox.get_attribute("class") or ""
@@ -312,17 +314,30 @@ class Clicker:
                         continue
                     if "onetrust" in checkbox_class.lower() or "cookie" in checkbox_class.lower():
                         continue
-                    
+
                     # Check if already checked
                     is_checked = await checkbox.is_checked()
                     if not is_checked:
+                        valid_checkboxes.append((checkbox, checkbox_id, checkbox_class))
+                except Exception:
+                    continue
+
+            # Select random number of checkboxes to check (1-3)
+            if valid_checkboxes:
+                import random
+                num_to_check = random.randint(1, min(3, len(valid_checkboxes)))
+                checkboxes_to_check = random.sample(valid_checkboxes, num_to_check)
+
+                print(f"DEBUG: Checking {num_to_check} out of {len(valid_checkboxes)} valid checkboxes")
+                for checkbox, checkbox_id, checkbox_class in checkboxes_to_check:
+                    try:
                         print(f"DEBUG: Checking checkbox: id='{checkbox_id}', class='{checkbox_class}'")
                         await checkbox.check()
                         filled_count += 1
-                        await page.wait_for_timeout(300)
-                except Exception as e:
-                    print(f"DEBUG: Error checking checkbox: {e}")
-                    continue
+                        await page.wait_for_timeout(500)  # Increased wait time for JS to process
+                    except Exception as e:
+                        print(f"DEBUG: Error checking checkbox: {e}")
+                        continue
         except Exception as e:
             print(f"DEBUG: Error processing checkboxes: {e}")
 
@@ -553,11 +568,11 @@ class Clicker:
             await page.wait_for_timeout(500)  # Wait for form validation
 
         # After filling forms/selecting options, check if Submit/Continue button is now enabled
-        # Wait up to 5 seconds for submit button to become enabled
+        # Wait up to 10 seconds for submit button to become enabled
         submit_clicked = False
         print(f"DEBUG: Filled {filled} fields, now looking for enabled submit button...")
 
-        for attempt in range(10):  # 10 attempts * 500ms = 5 seconds
+        for attempt in range(20):  # 20 attempts * 500ms = 10 seconds
             elements = await self._visible_clickables(page, initial_domain, visited_urls, prioritize_buttons=True)
 
             # Check if any priority button (Submit, Continue, Next) is now enabled
@@ -592,7 +607,7 @@ class Clicker:
                             pass
 
             # If no enabled submit button found yet, wait and try again
-            print(f"DEBUG: Attempt {attempt+1}/10 - no enabled submit button found, waiting...")
+            print(f"DEBUG: Attempt {attempt+1}/20 - no enabled submit button found, waiting...")
             await page.wait_for_timeout(500)
 
         # If no submit button was found/clicked, proceed with normal random click
