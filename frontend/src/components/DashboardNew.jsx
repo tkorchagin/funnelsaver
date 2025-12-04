@@ -250,11 +250,11 @@ function DashboardNew({ onLogout, token }) {
                         <AlertOctagon className="h-8 w-8 text-destructive" />
                       )}
 
-                      {isCancelled && (
+                      {isCancelled && !firstScreenshot && (
                         <XCircle className="h-8 w-8 text-muted-foreground" />
                       )}
 
-                      {isCompleted && firstScreenshot && (
+                      {(isCompleted || (isCancelled && firstScreenshot)) && firstScreenshot && (
                         <div className="relative w-[120px] h-[160px] translate-y-5 -rotate-6 opacity-80 transition-all duration-300 hover:translate-y-2 hover:rotate-0 hover:opacity-100 hover:scale-105">
                           <div
                             className="absolute top-0 left-0 w-full h-full rounded-xl border border-border/20 bg-cover bg-top shadow-[0_4px_20px_rgba(0,0,0,0.5)] z-30"
@@ -264,7 +264,7 @@ function DashboardNew({ onLogout, token }) {
                         </div>
                       )}
 
-                      {isCompleted && !firstScreenshot && (
+                      {(isCompleted || isCancelled) && !firstScreenshot && (
                         <div className="relative w-[120px] h-[160px] translate-y-5 -rotate-6 opacity-80">
                           <div className="absolute top-0 left-0 w-full h-full rounded-xl border border-border/20 bg-muted/80 z-30" />
                           <div className="absolute top-2.5 left-5 w-full h-full rounded-xl border border-border/20 bg-muted/60 z-20 opacity-60" />
