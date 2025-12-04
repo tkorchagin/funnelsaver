@@ -282,6 +282,15 @@ function DashboardNew({ onLogout, token }) {
                                 src={getScreenshotImage(project.favicon_path)}
                                 alt={project.title || 'Favicon'}
                                 className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Replace broken image with letter fallback
+                                  e.target.style.display = 'none';
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'w-full h-full flex items-center justify-center';
+                                  fallback.style.backgroundColor = '#E6F8D3';
+                                  fallback.innerHTML = `<span class="text-lg font-bold text-black">${(project.title || new URL(project.url).hostname)[0].toUpperCase()}</span>`;
+                                  e.target.parentElement.appendChild(fallback);
+                                }}
                               />
                             </div>
                           ) : (
