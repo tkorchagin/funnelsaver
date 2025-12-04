@@ -113,7 +113,7 @@ def get_projects():
         'completed_at': p.completed_at.isoformat() if p.completed_at else None,
         'error': p.error,
         'user_id': p.user_id,
-        'username': p.user.username if user and user.is_admin else None,
+        'username': p.user.username,  # Always show username for all users
         'screenshot_count': len(p.screenshots),
         'title': p.title,
         'description': p.description,
@@ -178,7 +178,13 @@ def create_project():
 @jwt_required()
 def get_project(project_id):
     user_id = int(get_jwt_identity())
-    project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+    user = User.query.get(user_id)
+
+    # Admin can see any project, regular users only their own
+    if user and user.is_admin:
+        project = Project.query.filter_by(id=project_id).first()
+    else:
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
 
     if not project:
         return jsonify({'error': 'Project not found'}), 404
