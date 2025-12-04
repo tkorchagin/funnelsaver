@@ -117,7 +117,12 @@ def get_projects():
         'screenshot_count': len(p.screenshots),
         'title': p.title,
         'description': p.description,
-        'favicon_path': p.favicon_path
+        'favicon_path': p.favicon_path,
+        'screenshots': [{
+            'id': s.id,
+            'screenshot_path': s.screenshot_path,
+            'step_number': s.step_number
+        } for s in p.screenshots]
     } for p in projects]), 200
 
 
