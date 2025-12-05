@@ -84,4 +84,12 @@ export const getCurrentUser = () => {
   return api.get('/auth/me');
 };
 
+export const duplicateProject = (projectId) => {
+  return api.post(`/projects/${projectId}/duplicate`);
+};
+
+export const updateProject = (projectId, data) => {
+  return api.patch(`/projects/${projectId}`, data);
+};
+
 export default api;

@@ -274,6 +274,84 @@ def get_screenshot_image(screenshot_id):
     return send_file(file_path, mimetype='image/png')
 
 
+@app.route('/api/projects/<int:project_id>/duplicate', methods=['POST'])
+@jwt_required()
+def duplicate_project(project_id):
+    """Create a new project with the same URL as an existing project"""
+    user_id = int(get_jwt_identity())
+    user = User.query.filter_by(id=user_id).first()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Get original project (admin can duplicate any, users only their own)
+    if user.is_admin:
+        original_project = Project.query.filter_by(id=project_id).first()
+    else:
+        original_project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+
+    if not original_project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    # Create new project with same URL
+    new_project = Project(
+        url=original_project.url,
+        user_id=user_id,
+        status='pending',
+        is_public=False
+    )
+    db.session.add(new_project)
+    db.session.commit()
+
+    # Queue scraping task
+    from tasks import scrape_funnel
+    scrape_funnel.delay(new_project.id)
+
+    return jsonify({
+        'id': new_project.id,
+        'url': new_project.url,
+        'status': new_project.status,
+        'message': 'New scraping task created'
+    }), 201
+
+
+@app.route('/api/projects/<int:project_id>', methods=['PATCH'])
+@jwt_required()
+def update_project(project_id):
+    """Update project title and description"""
+    user_id = int(get_jwt_identity())
+    user = User.query.filter_by(id=user_id).first()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Get project (admin can edit any, users only their own)
+    if user.is_admin:
+        project = Project.query.filter_by(id=project_id).first()
+    else:
+        project = Project.query.filter_by(id=project_id, user_id=user_id).first()
+
+    if not project:
+        return jsonify({'error': 'Project not found'}), 404
+
+    data = request.json
+
+    # Update fields if provided
+    if 'title' in data:
+        project.title = data['title']
+    if 'description' in data:
+        project.description = data['description']
+
+    db.session.commit()
+
+    return jsonify({
+        'id': project.id,
+        'title': project.title,
+        'description': project.description,
+        'message': 'Project updated successfully'
+    }), 200
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({'status': 'healthy'}), 200

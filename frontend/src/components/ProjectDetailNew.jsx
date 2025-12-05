@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProject, getScreenshotImage, togglePublic, cancelProject, deleteProject, getCurrentUser } from '../api';
+import { getProject, getScreenshotImage, togglePublic, cancelProject, deleteProject, getCurrentUser, duplicateProject, updateProject } from '../api';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -26,7 +26,10 @@ import {
   Globe,
   Check,
   ExternalLink,
-  Trash2
+  Trash2,
+  RotateCw,
+  Edit2,
+  Save
 } from 'lucide-react';
 
 function ProjectDetailNew({ token, onLogout }) {
@@ -43,6 +46,11 @@ function ProjectDetailNew({ token, onLogout }) {
   const [deleting, setDeleting] = useState(false);
   const [username, setUsername] = useState('');
   const [progressLog, setProgressLog] = useState([]);
+  const [duplicating, setDuplicating] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
 
   useEffect(() => {
     if (project) {
@@ -244,6 +252,75 @@ function ProjectDetailNew({ token, onLogout }) {
     });
   };
 
+  const handleDuplicateProject = async () => {
+    setDuplicating(true);
+    try {
+      const response = await duplicateProject(id);
+      toast({
+        title: "New scraping started",
+        description: "A new project has been created with the same URL",
+      });
+      // Navigate to the new project
+      setTimeout(() => navigate(`/projects/${response.data.id}`), 1000);
+    } catch (err) {
+      console.error('Failed to duplicate project', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.error || 'Failed to create duplicate project',
+        variant: "destructive",
+      });
+      setDuplicating(false);
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    try {
+      await updateProject(id, { title: editedTitle });
+      setProject({ ...project, title: editedTitle });
+      setEditingTitle(false);
+      toast({
+        title: "Title updated",
+        description: "Project title has been updated successfully",
+      });
+    } catch (err) {
+      console.error('Failed to update title', err);
+      toast({
+        title: "Error",
+        description: "Failed to update project title",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    try {
+      await updateProject(id, { description: editedDescription });
+      setProject({ ...project, description: editedDescription });
+      setEditingDescription(false);
+      toast({
+        title: "Description updated",
+        description: "Project description has been updated successfully",
+      });
+    } catch (err) {
+      console.error('Failed to update description', err);
+      toast({
+        title: "Error",
+        description: "Failed to update project description",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startEditingTitle = () => {
+    setEditedTitle(project.title || projectName);
+    setEditingTitle(true);
+  };
+
+  const startEditingDescription = () => {
+    setEditedDescription(project.description || projectDescription);
+    setEditingDescription(true);
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -409,12 +486,81 @@ function ProjectDetailNew({ token, onLogout }) {
             {/* Title */}
             <div className="flex items-start justify-between gap-4 mb-8">
               <div className="flex-1">
-                <h1 className="text-5xl font-bold leading-tight tracking-tight mb-2">
-                  {projectName}
-                </h1>
-                <h2 className="text-2xl text-muted-foreground mb-4 leading-relaxed">
-                  {projectDescription}
-                </h2>
+                {editingTitle ? (
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      className="flex-1 text-5xl font-bold leading-tight tracking-tight bg-background border border-border rounded-lg px-3 py-2"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveTitle}
+                      className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-90"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingTitle(false)}
+                      className="px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-80"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-2 group">
+                    <h1 className="text-5xl font-bold leading-tight tracking-tight">
+                      {projectName}
+                    </h1>
+                    <button
+                      onClick={startEditingTitle}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-muted rounded-lg"
+                      title="Edit title"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {editingDescription ? (
+                  <div className="flex items-center gap-2 mb-4">
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      className="flex-1 text-2xl text-muted-foreground leading-relaxed bg-background border border-border rounded-lg px-3 py-2 resize-none"
+                      rows={2}
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveDescription}
+                      className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-90"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingDescription(false)}
+                      className="px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-80"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-4 group">
+                    <h2 className="text-2xl text-muted-foreground leading-relaxed">
+                      {projectDescription}
+                    </h2>
+                    <button
+                      onClick={startEditingDescription}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-muted rounded-lg"
+                      title="Edit description"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -427,6 +573,14 @@ function ProjectDetailNew({ token, onLogout }) {
                     {stopping ? 'Stopping...' : 'Stop'}
                   </button>
                 )}
+                <button
+                  onClick={handleDuplicateProject}
+                  disabled={duplicating}
+                  className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed border-none"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  {duplicating ? 'Starting...' : 'Parse Again'}
+                </button>
                 <button
                   onClick={handleDeleteProject}
                   disabled={deleting}
