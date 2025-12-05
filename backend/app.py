@@ -195,6 +195,15 @@ def get_project(project_id):
     screenshots = Screenshot.query.filter_by(project_id=project_id).order_by(Screenshot.step_number).all()
     files = File.query.filter_by(project_id=project_id).all()
 
+    # Check if task is stuck (no new screenshots in 5+ minutes while processing)
+    is_stuck = False
+    if project.status == 'processing' and screenshots:
+        from datetime import datetime, timedelta
+        last_screenshot = screenshots[-1]
+        time_since_last = datetime.utcnow() - last_screenshot.created_at
+        if time_since_last > timedelta(minutes=5):
+            is_stuck = True
+
     return jsonify({
         'id': project.id,
         'url': project.url,
@@ -206,6 +215,7 @@ def get_project(project_id):
         'title': project.title,
         'description': project.description,
         'favicon_path': project.favicon_path,
+        'is_stuck': is_stuck,
         'screenshots': [{
             'id': s.id,
             'step_number': s.step_number,
@@ -214,7 +224,8 @@ def get_project(project_id):
             'html_path': s.html_path,
             'markdown_path': s.markdown_path,
             'action_description': s.action_description,
-            'markdown_content': s.markdown_content
+            'markdown_content': s.markdown_content,
+            'created_at': s.created_at.isoformat() if s.created_at else None
         } for s in screenshots],
         'files': [{
             'id': f.id,

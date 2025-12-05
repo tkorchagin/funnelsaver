@@ -42,6 +42,7 @@ function ProjectDetailNew({ token, onLogout }) {
   const [stopping, setStopping] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [username, setUsername] = useState('');
+  const [progressLog, setProgressLog] = useState([]);
 
   useEffect(() => {
     if (project) {
@@ -80,6 +81,13 @@ function ProjectDetailNew({ token, onLogout }) {
           if (data.data.status === 'completed' || data.data.status === 'failed') {
             loadProject();
           }
+        } else if (data.type === 'progress') {
+          // Add progress message to log (keep last 10 messages)
+          setProgressLog(prev => [...prev.slice(-9), {
+            message: data.data.message,
+            action: data.data.action,
+            timestamp: new Date().toLocaleTimeString()
+          }]);
         }
       } catch (e) {
         console.error('Error parsing SSE event:', e);
@@ -499,10 +507,32 @@ function ProjectDetailNew({ token, onLogout }) {
 
             {/* Processing Status */}
             {project.status === 'processing' && (
-              <div className="bg-muted/50 rounded-lg p-4 text-center mb-6 max-w-[800px]">
-                <p className="font-medium">
-                  🔄 Scraping in progress... This page will update automatically.
-                </p>
+              <div className="space-y-4 mb-6 max-w-[800px]">
+                <div className="bg-muted/50 rounded-lg p-4 text-center">
+                  <p className="font-medium">
+                    🔄 Scraping in progress... This page will update automatically.
+                  </p>
+                  {project.is_stuck && (
+                    <p className="mt-2 text-sm text-destructive">
+                      ⚠️ Warning: No new screenshots in 5+ minutes. The task might be stuck. Consider stopping and restarting.
+                    </p>
+                  )}
+                </div>
+
+                {/* Progress Log */}
+                {progressLog.length > 0 && (
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Live Progress</h3>
+                    <div className="space-y-1 max-h-[200px] overflow-y-auto font-mono text-xs">
+                      {progressLog.map((log, index) => (
+                        <div key={index} className="flex items-start gap-2 text-foreground/80">
+                          <span className="text-muted-foreground shrink-0">{log.timestamp}</span>
+                          <span className="flex-1">{log.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -510,10 +540,10 @@ function ProjectDetailNew({ token, onLogout }) {
 
         {/* Gallery */}
         <section className="container mx-auto max-w-[1400px] px-8 py-12">
-          {screenshots.length > 0 ? (
+          {screenshots.length > 0 || project.status === 'processing' ? (
             <>
               <h2 className="text-xl font-semibold mb-6">
-                Screenshots ({screenshots.length})
+                Screenshots ({screenshots.length}{project.status === 'processing' ? '+' : ''})
               </h2>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-8">
                 {screenshots.map((screenshot, index) => {
@@ -576,13 +606,52 @@ function ProjectDetailNew({ token, onLogout }) {
                     </div>
                   );
                 })}
+
+                {/* Live Processing Placeholder */}
+                {project.status === 'processing' && (
+                  <div className="group">
+                    {/* Placeholder Card */}
+                    <div className={`relative aspect-[9/19.5] bg-muted/50 rounded-[32px] overflow-hidden border border-dashed ${
+                      project.is_stuck ? 'border-destructive/40' : 'border-border/40'
+                    }`}>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                        {project.is_stuck ? (
+                          <AlertCircle className="w-12 h-12 mb-4 text-destructive" />
+                        ) : (
+                          <div className="w-12 h-12 mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                        <p className={`text-sm font-semibold mb-2 ${project.is_stuck ? 'text-destructive' : 'text-foreground'}`}>
+                          {project.is_stuck
+                            ? 'Might be stuck...'
+                            : (progressLog.length > 0 ? progressLog[progressLog.length - 1].message : 'Processing...')
+                          }
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {project.is_stuck ? 'No progress for 5+ min' : `Step ${screenshots.length + 1}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="mt-3 flex items-center justify-between px-1">
+                      <span className={`text-sm font-medium ${project.is_stuck ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        {project.is_stuck ? 'Stuck' : 'In progress...'}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                          project.is_stuck ? 'bg-destructive' : 'bg-primary'
+                        }`} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           ) : (
             <div className="text-center py-20 text-muted-foreground">
-              {project.status === 'processing'
-                ? 'Screenshots are being generated...'
-                : 'No screenshots available'}
+              No screenshots available
             </div>
           )}
         </section>

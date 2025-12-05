@@ -614,7 +614,15 @@ class Clicker:
                             return desc
                         except Exception as e2:
                             print(f"DEBUG: Force click also failed: {e2}")
-                            pass
+                            # Try JavaScript click as final fallback
+                            try:
+                                print(f"DEBUG: Trying JavaScript click as final fallback...")
+                                await el.evaluate("el => el.click()")
+                                await page.wait_for_timeout(1000)
+                                return desc
+                            except Exception as e3:
+                                print(f"DEBUG: JavaScript click also failed: {e3}")
+                                pass
 
             # If no enabled submit button found yet, wait and try again
             print(f"DEBUG: Attempt {attempt+1}/20 - no enabled submit button found, waiting...")
@@ -640,6 +648,13 @@ class Clicker:
             desc = f"Filled forms and {desc}"
 
         try:
+            # Scroll element into view before clicking
+            try:
+                await element.scroll_into_view_if_needed(timeout=5000)
+            except:
+                await element.evaluate("el => el.scrollIntoView({behavior: 'smooth', block: 'center'})")
+            await page.wait_for_timeout(500)
+
             await element.click(timeout=10000)
             await page.wait_for_timeout(1000)  # Wait for page to update
         except Exception as e:
@@ -647,7 +662,13 @@ class Clicker:
             try:
                 await element.click(force=True, timeout=5000)
                 await page.wait_for_timeout(1000)
-            except Exception:
-                return f"Failed to click element: {desc}"
+            except Exception as e2:
+                # Final fallback: JavaScript click
+                try:
+                    print(f"DEBUG: Standard clicks failed, using JavaScript click...")
+                    await element.evaluate("el => el.click()")
+                    await page.wait_for_timeout(1000)
+                except Exception:
+                    return f"Failed to click element: {desc}"
 
         return desc

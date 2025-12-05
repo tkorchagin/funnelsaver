@@ -68,6 +68,15 @@ def scrape_funnel(self, project_id):
             project_dir = os.path.join(app.config['UPLOAD_FOLDER'], f'project_{project_id}')
             os.makedirs(project_dir, exist_ok=True)
 
+            # Define callback for progress updates
+            async def on_progress(progress_data):
+                """Callback for real-time progress updates"""
+                try:
+                    # Send progress event to frontend
+                    send_progress_event(project_id, 'progress', progress_data)
+                except Exception as e:
+                    print(f"Error in on_progress: {e}")
+
             # Define callback for real-time updates
             async def on_step_completed(step_data):
                 """Callback called by scraper after each step"""
@@ -127,13 +136,14 @@ def scrape_funnel(self, project_id):
                 except Exception as e:
                     print(f"Error in on_step_completed: {e}")
 
-            # Run the scraper with custom output directory and callback
+            # Run the scraper with custom output directory and callbacks
             asyncio.run(run_funnel(
                 url=project.url,
                 headless=True,
                 max_steps=100,
                 output_dir=project_dir,
-                on_step_completed=on_step_completed
+                on_step_completed=on_step_completed,
+                on_progress=on_progress
             ))
 
             # Use project_dir as run_dir (scraper will write directly there)
@@ -188,3 +198,56 @@ def scrape_funnel(self, project_id):
             })
 
             return {'status': 'failed', 'error': str(e)}
+
+
+@celery_app.task
+def check_stuck_projects():
+    """
+    Periodic task to check for stuck projects and automatically cancel them.
+    Runs every 60 seconds via Celery Beat.
+    """
+    with app.app_context():
+        from datetime import timedelta
+
+        # Find projects in processing state
+        processing_projects = Project.query.filter_by(status='processing').all()
+
+        for project in processing_projects:
+            # Get last screenshot
+            screenshots = Screenshot.query.filter_by(project_id=project.id).order_by(Screenshot.created_at.desc()).all()
+
+            if screenshots:
+                last_screenshot = screenshots[0]
+                time_since_last = datetime.utcnow() - last_screenshot.created_at
+
+                # If no new screenshots in 10+ minutes, cancel the project
+                if time_since_last > timedelta(minutes=10):
+                    print(f"Auto-cancelling stuck project {project.id} (no progress for {time_since_last})")
+
+                    project.status = 'cancelled'
+                    project.error = f'Automatically cancelled: No progress for {int(time_since_last.total_seconds() / 60)} minutes'
+                    project.completed_at = datetime.utcnow()
+                    db.session.commit()
+
+                    # Send cancellation event
+                    send_progress_event(project.id, 'status_changed', {
+                        'status': 'cancelled',
+                        'error': project.error
+                    })
+            else:
+                # No screenshots at all, check project creation time
+                time_since_creation = datetime.utcnow() - project.created_at
+                if time_since_creation > timedelta(minutes=10):
+                    print(f"Auto-cancelling project {project.id} with no screenshots after {time_since_creation}")
+
+                    project.status = 'cancelled'
+                    project.error = f'Automatically cancelled: No screenshots generated in {int(time_since_creation.total_seconds() / 60)} minutes'
+                    project.completed_at = datetime.utcnow()
+                    db.session.commit()
+
+                    send_progress_event(project.id, 'status_changed', {
+                        'status': 'cancelled',
+                        'error': project.error
+                    })
+
+        return {'checked': len(processing_projects)}

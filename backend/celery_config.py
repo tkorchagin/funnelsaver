@@ -41,4 +41,12 @@ celery_app.conf.update(
             'timeout': 5.0
         }
     },
+
+    # Beat schedule for periodic tasks
+    beat_schedule={
+        'check-stuck-projects': {
+            'task': 'tasks.check_stuck_projects',
+            'schedule': 60.0,  # Run every 60 seconds
+        },
+    },
 )

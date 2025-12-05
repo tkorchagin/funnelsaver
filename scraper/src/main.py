@@ -10,7 +10,7 @@ from src.reporter import Reporter
 async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                       interactive: bool = False, max_steps: int = 20, debug: bool = False,
                       pause_at_step: int = None, keep_open: bool = False, output_dir: str = None,
-                      on_step_completed = None):
+                      on_step_completed = None, on_progress = None):
     from urllib.parse import urlparse
 
     config = Config(config_path) if config_path else Config()
@@ -46,6 +46,8 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         scraper = Scraper(output_dir=reporter.run_dir)
 
         # Navigate to URL and get initial domain
+        if on_progress:
+            await on_progress({'action': 'navigate', 'message': f'Navigating to {url}...'})
         await page.goto(url)
         await page.wait_for_timeout(2000)  # Wait for page to load
 
@@ -53,10 +55,22 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
         initial_domain = urlparse(page.url).netloc
 
         # Track visited URLs to avoid loops
-        visited_urls = set()
+        # For SPAs, we track URL+content_hash to allow same URL with different content
+        visited_states = set()
+
+        # Track consecutive failures to detect infinite loops
+        consecutive_failures = 0
+        max_consecutive_failures = 3
+        last_url = None
+        last_page_hash = None  # Track page content changes for SPAs
 
         # Step 0: Capture initial page
+        if on_progress:
+            await on_progress({'action': 'cookies', 'message': 'Checking for cookie banners...'})
         await clicker.accept_cookies(page)
+
+        if on_progress:
+            await on_progress({'action': 'screenshot', 'message': 'Capturing initial screenshot...'})
         screenshot_path = await scraper.capture_screenshot(page, 0)
         html_path = await scraper.save_html(page, 0)
         markdown_content = await scraper.extract_markdown(page)
@@ -79,7 +93,14 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                 'favicon_filename': favicon_filename
             })
 
-        visited_urls.add(page.url)
+        # Track initial state
+        try:
+            initial_content = await page.content()
+            import hashlib
+            initial_hash = hashlib.md5(initial_content.encode()).hexdigest()
+            visited_states.add(f"{page.url}:{initial_hash}")
+        except:
+            visited_states.add(page.url)
 
         # Steps 1-N: Click through funnel
         for step in range(1, config.max_steps + 1):
@@ -90,22 +111,35 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                 await page.pause()  # Opens Playwright Inspector
 
             # Accept cookies if any
+            if on_progress:
+                await on_progress({'action': 'cookies', 'message': f'Step {step}: Checking for cookie banners...', 'step': step})
             await clicker.accept_cookies(page)
-            
+
             # Wait for animations to complete before screenshot (configurable delay)
+            if on_progress:
+                await on_progress({'action': 'wait', 'message': f'Step {step}: Waiting for page to settle...', 'step': step})
             await page.wait_for_timeout(config.screenshot_delay_ms)
-            
+
             # Capture screenshot, HTML and extract markdown BEFORE clicking
             # This gives time for images and animations to load
+            if on_progress:
+                await on_progress({'action': 'screenshot', 'message': f'Step {step}: Capturing screenshot...', 'step': step})
             screenshot_path = await scraper.capture_screenshot(page, step)
             html_path = await scraper.save_html(page, step)
             markdown_content = await scraper.extract_markdown(page)
-            
+
             # Perform click (or interactive prompt could be added later)
             print(f"[Step {step}] Current URL: {page.url}")
             print(f"[Step {step}] Looking for clickable elements...")
+            if on_progress:
+                await on_progress({'action': 'looking', 'message': f'Step {step}: Looking for clickable elements...', 'step': step})
+
+            # Extract URLs from visited_states for backward compatibility with clicker
+            visited_urls = {state.split(':')[0] for state in visited_states}
             action_desc = await clicker.click_random(page, initial_domain, visited_urls)
             print(f"[Step {step}] Action: {action_desc}")
+            if on_progress:
+                await on_progress({'action': 'click', 'message': f'Step {step}: {action_desc}', 'step': step})
 
             # Wait for navigation/page updates to complete
             try:
@@ -166,7 +200,42 @@ async def run_funnel(url: str, config_path: str = None, headless: bool = True,
                     'action_desc': action_desc
                 })
 
-            visited_urls.add(page.url)
+            # Check for infinite loops (same URL AND same content, with failed actions)
+            current_url = page.url
+
+            # Calculate page content hash to detect changes in SPAs
+            try:
+                page_content = await page.content()
+                import hashlib
+                current_page_hash = hashlib.md5(page_content.encode()).hexdigest()
+            except:
+                current_page_hash = None
+
+            # Only count as failure if BOTH URL and content are unchanged
+            if "Failed to click" in action_desc or "No clickable elements found" in action_desc:
+                if current_url == last_url and current_page_hash == last_page_hash:
+                    consecutive_failures += 1
+                    print(f"[Step {step}] ⚠️  Consecutive failure {consecutive_failures}/{max_consecutive_failures} (same URL & content)")
+                else:
+                    # URL or content changed - reset counter (SPA progress detected)
+                    if current_url == last_url and current_page_hash != last_page_hash:
+                        print(f"[Step {step}] ✓ SPA detected: Same URL but content changed")
+                    consecutive_failures = 0
+            else:
+                # Successful action - reset counter
+                consecutive_failures = 0
+
+            last_url = current_url
+            last_page_hash = current_page_hash
+
+            # Break if too many consecutive failures (infinite loop detected)
+            if consecutive_failures >= max_consecutive_failures:
+                print(f"[Step {step}] ❌ Detected infinite loop: {consecutive_failures} consecutive failures on same URL. Stopping.")
+                break
+
+            # Track state (URL + content hash) instead of just URL for SPA support
+            state_key = f"{current_url}:{current_page_hash}" if current_page_hash else current_url
+            visited_states.add(state_key)
             # Break if no clickable elements
             if action_desc == "No clickable elements found":
                 break
